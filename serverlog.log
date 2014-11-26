@@ -1,0 +1,14 @@
+Nov 26, 2014 5:17:02 PM WWSocketServer main
+INFO: wwss Log Start ---------------------------------- 
+Nov 26, 2014 5:17:02 PM WWSocketServer main
+INFO: wwss First log message
+Nov 26, 2014 5:17:02 PM WWSocketServer main
+INFO: wwss main: attempting to create a ServerSocket on port: 4001
+Nov 26, 2014 5:17:05 PM ClientHandler <init>
+INFO: wwss ClientHandler constructor.
+Nov 26, 2014 5:17:27 PM ClientHandler logMsg
+INFO: wwss ClientHandler 49463 received: hi
+Nov 26, 2014 5:17:27 PM ClientHandler logMsg
+INFO: wwss ClientHandler 49463 Server thread sending back : hi
+Nov 26, 2014 5:17:31 PM ClientHandler logMsg
+INFO: wwss ClientHandler 49463 Client disconnected. Closing socket.
