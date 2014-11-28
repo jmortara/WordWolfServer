@@ -35,6 +35,7 @@ public class WWSocketServer
     public static final String ECHO = "echo:";
     public static final String MESSAGE_PLAYER_PORT = "messagePlayer_port_";
     public static final String SELECT_OPPONENT_PORT = "selectOpponent_port_";
+    public static final String MESSAGE_OPPONENT = "messageOpponent:";
     
     
 
@@ -154,15 +155,25 @@ class ClientHandler extends Thread
             {
             	logMsg( "received: " + line );
             	
+       			Boolean prefixMatched = false;
            		int firstColonIndex = line.indexOf( ":" );
+           		int lastUnderscoreInPrefixIndex;
+           		String prefix;
+           		String strippedLine;
+           		Player originatingPlayer = this.getPlayerOnPort( this.conn.getPort() );
+           		String destPortStr;
+           		int destPort;
+           		Player destPlayer;
+           		Socket opponentConn;
+           		PrintStream opponentOut;
+           		Player opponent;
            		
            		if ( firstColonIndex > -1 )	//TODO: improve this method of identifying prefixes
            		{
            			logMsg( "Colon character found. Assume this indicates a message prefix. Found at char: " + firstColonIndex );
-           			Boolean prefixMatched = false;
-                	String prefix = line.substring( 0, firstColonIndex + 1 );
-                	String strippedLine = line.substring( firstColonIndex + 1, line.length() );
-                	int lastUnderscoreInPrefixIndex = prefix.lastIndexOf( "_" );	//this underscore is not used in all prefix cases
+                	prefix = line.substring( 0, firstColonIndex + 1 );
+                	strippedLine = line.substring( firstColonIndex + 1, line.length() );
+                	lastUnderscoreInPrefixIndex = prefix.lastIndexOf( "_" );	//this underscore is not used in all prefix cases
                 	logMsg("Message prefix is: " + prefix);
                 	
                 	
@@ -179,13 +190,13 @@ class ClientHandler extends Thread
                 	if ( prefix.startsWith( WWSocketServer.MESSAGE_PLAYER_PORT ) )
                 	{
                 		prefixMatched = true;
-                		String destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
-                		int destPort = new Integer( destPortStr );
+                		destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
+                		destPort = new Integer( destPortStr );
                 		logMsg( "parsed destPort is: " + destPort ); //TODO: this may not correctly parse all values
                 		
                 		if ( playerExists( destPort ) )
                 		{
-                			Player destPlayer = getPlayerOnPort( destPort );
+                			destPlayer = getPlayerOnPort( destPort );
                 			if ( destPlayer != null )
                 			{
                 				Socket destConn = destPlayer.getConn();
@@ -204,22 +215,21 @@ class ClientHandler extends Thread
                 		}
                 	}
                 	
-                	// parse format example: 'selectOpponent_port_12345:54321'
+                	// parse format example: 'selectOpponent_port_12345:' (colon required)
                 	if ( prefix.startsWith( WWSocketServer.SELECT_OPPONENT_PORT ) )
                 	{
                 		prefixMatched = true;
-                   		String destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
-                   		int destPort = new Integer( destPortStr );
+                		destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
+                		destPort = new Integer( destPortStr );
                 		logMsg( "parsed destPort is: " + destPort ); //TODO: this may not correctly parse all values
                 		
                 		if ( playerExists( destPort ) )
                 		{
-                			Player opponent = getPlayerOnPort( destPort );
+                			opponent = getPlayerOnPort( destPort );
                 			if ( opponent != null )
                 			{
-                				Player originatingPlayer = this.getPlayerOnPort( this.conn.getPort() );
-                				Socket opponentConn = opponent.getConn();
-                				PrintStream opponentOut = new PrintStream( opponentConn.getOutputStream() );
+                				opponentConn = opponent.getConn();
+                				opponentOut = new PrintStream( opponentConn.getOutputStream() );		//TODO: when to close?
                 				opponentOut.println( "wwss ClientHandler: player on port " + this.conn.getPort() + " has selected you as their opponent. Your port: " + destPort );
                 				originatingPlayer.setOpponent( opponent );
                 				opponent.setOpponent( originatingPlayer );
@@ -235,16 +245,36 @@ class ClientHandler extends Thread
                 				out.println( "wwss ClientHandler: unknown player: " + destPort );
                 			}
                 		}
+                		else 
+                		{
+                			out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
+                		}
+                	}
+                	
+                	// parse format example: 'messageOpponent:hello' 
+                	if ( prefix.equals( WWSocketServer.MESSAGE_OPPONENT ) )
+                	{
+                		prefixMatched = true;
+                		opponent = originatingPlayer.getOpponent();
+                		
+                		if ( originatingPlayer.getOpponent() != null )
+                		{
+            				opponentConn = opponent.getConn();
+            				opponentOut = new PrintStream( opponentConn.getOutputStream() );	//TODO: when to close?
+            				opponentOut.println( "wwss ClientHandler: message from your opponent:" );
+            				opponentOut.println( " " + strippedLine );
+                		}
             			else 
             			{
-            				out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
+            				out.println( "wwss ClientHandler: you have no opponent selected." );
             			}
                 	}
+                	
                 	
                 	// unknown prefix or no prefix
                 	if ( !prefixMatched )
                 	{
-                		logMsg( "Unknown message prefix." );
+                		logMsg( "Unknown message prefix. Don't forget trailing colon where necessary." );
                 	}
            			
            		}
