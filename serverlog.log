@@ -1,84 +1,42 @@
-Nov 28, 2014 3:54:14 PM WWSocketServer main
+Nov 28, 2014 4:30:08 PM WWSocketServer main
 INFO: wwss Log Start ---------------------------------- 
-Nov 28, 2014 3:54:14 PM WWSocketServer main
+Nov 28, 2014 4:30:08 PM WWSocketServer main
 INFO: wwss First log message
-Nov 28, 2014 3:54:14 PM WWSocketServer main
+Nov 28, 2014 4:30:08 PM WWSocketServer main
 INFO: wwss main: attempting to create a ServerSocket on port: 4001
-Nov 28, 2014 3:54:16 PM ClientHandler <init>
+Nov 28, 2014 4:30:10 PM ClientHandler <init>
 INFO: wwss ClientHandler constructor.
-Nov 28, 2014 3:54:16 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741  New Player Created! Num players now: 1
-Nov 28, 2014 3:54:19 PM ClientHandler <init>
+Nov 28, 2014 4:30:10 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932  New Player Created! Num players now: 1
+Nov 28, 2014 4:30:12 PM ClientHandler <init>
 INFO: wwss ClientHandler constructor.
-Nov 28, 2014 3:54:19 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742  New Player Created! Num players now: 2
-Nov 28, 2014 3:54:33 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741 received: messagePlayer_port_59742: hey man
-Nov 28, 2014 3:54:33 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741 Colon character found. Assume this indicates a message prefix. Found at char: 24
-Nov 28, 2014 3:54:33 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741 Message prefix is: messagePlayer_port_59742:
-Nov 28, 2014 3:54:33 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741 parsed destPort is: 59742
-Nov 28, 2014 3:54:33 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741 playerExists on port? 59742
-Nov 28, 2014 3:54:33 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741 playerFound: true
-Nov 28, 2014 3:54:33 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59741 getPlayerOnPort on port 59742
-Nov 28, 2014 3:56:48 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received: messagePlayer_port_19741: holla data!
-Nov 28, 2014 3:56:48 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Colon character found. Assume this indicates a message prefix. Found at char: 24
-Nov 28, 2014 3:56:48 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Message prefix is: messagePlayer_port_19741:
-Nov 28, 2014 3:56:48 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 parsed destPort is: 19741
-Nov 28, 2014 3:56:48 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 playerExists on port? 19741
-Nov 28, 2014 3:56:48 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 playerFound: false
-Nov 28, 2014 3:59:15 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received:  on requested port59742:yo ho ho brotha!
-Nov 28, 2014 3:59:15 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Colon character found. Assume this indicates a message prefix. Found at char: 23
-Nov 28, 2014 3:59:15 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Message prefix is:  on requested port59742:
-Nov 28, 2014 3:59:15 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Unknown message prefix.
-Nov 28, 2014 3:59:28 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received:  on requested port
-Nov 28, 2014 3:59:29 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received: 
-Nov 28, 2014 3:59:30 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received: 
-Nov 28, 2014 3:59:44 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received: messagePlayer_port_59742: yo ho ho brotha!
-Nov 28, 2014 3:59:44 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Colon character found. Assume this indicates a message prefix. Found at char: 24
-Nov 28, 2014 3:59:44 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Message prefix is: messagePlayer_port_59742:
-Nov 28, 2014 3:59:44 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 parsed destPort is: 59742
-Nov 28, 2014 3:59:44 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 playerExists on port? 59742
-Nov 28, 2014 3:59:44 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 playerFound: true
-Nov 28, 2014 3:59:44 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 getPlayerOnPort on port 59742
-Nov 28, 2014 3:59:59 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received: mes
-Nov 28, 2014 4:00:17 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 received: messagePlayer_port_59741: yo ho ho man!
-Nov 28, 2014 4:00:17 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Colon character found. Assume this indicates a message prefix. Found at char: 24
-Nov 28, 2014 4:00:17 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 Message prefix is: messagePlayer_port_59741:
-Nov 28, 2014 4:00:17 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 parsed destPort is: 59741
-Nov 28, 2014 4:00:17 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 playerExists on port? 59741
-Nov 28, 2014 4:00:17 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 playerFound: true
-Nov 28, 2014 4:00:17 PM ClientHandler logMsg
-INFO: wwss ClientHandler 59742 getPlayerOnPort on port 59741
+Nov 28, 2014 4:30:12 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59933  New Player Created! Num players now: 2
+Nov 28, 2014 4:30:22 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 received: selectOpponent_port_1
+Nov 28, 2014 4:30:28 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 received: selectOpponent_port_59933
+Nov 28, 2014 4:30:33 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 received: :
+Nov 28, 2014 4:30:33 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 Colon character found. Assume this indicates a message prefix. Found at char: 0
+Nov 28, 2014 4:30:33 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 Message prefix is: :
+Nov 28, 2014 4:30:33 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 Unknown message prefix.
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 received: selectOpponent_port_59933:
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 Colon character found. Assume this indicates a message prefix. Found at char: 25
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 Message prefix is: selectOpponent_port_59933:
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 parsed destPort is: 59933
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 playerExists on port? 59933
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 playerFound: true
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 getPlayerOnPort on port 59933
+Nov 28, 2014 4:30:40 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59932 getPlayerOnPort on port 59932

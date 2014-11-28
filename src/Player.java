@@ -8,7 +8,12 @@ public class Player
 	private static Logger log;
 	private Socket conn;
 	private int port;
+	private Player opponent;
 	
+	public Player getOpponent() {
+		return opponent;
+	}
+
 	public int getPort() {
 		return port;
 	}
@@ -29,6 +34,12 @@ public class Player
 		
 		log = Logger.getLogger( "Player " + this.port );
 		log.info( "Player constructor on port: " + this.port );
+	}
+	
+	public void setOpponent( Player opponent )
+	{
+		this.opponent = opponent;
+		log.info( "setOpponent: opponent Player selected on port: " + this.opponent.getPort() );
 	}
 
 }

@@ -34,6 +34,7 @@ public class WWSocketServer
     //message prefixes
     public static final String ECHO = "echo:";
     public static final String MESSAGE_PLAYER_PORT = "messagePlayer_port_";
+    public static final String SELECT_OPPONENT_PORT = "selectOpponent_port_";
     
     
 
@@ -178,21 +179,56 @@ class ClientHandler extends Thread
                 	if ( prefix.startsWith( WWSocketServer.MESSAGE_PLAYER_PORT ) )
                 	{
                 		prefixMatched = true;
-                   		String destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
-                   		int destPort = new Integer( destPortStr );
+                		String destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
+                		int destPort = new Integer( destPortStr );
                 		logMsg( "parsed destPort is: " + destPort ); //TODO: this may not correctly parse all values
-                		
-                		////////////// START HERE. THE PORT SEEMS TO BE DETECTED. WE JUST NEED TO TRIAGE THE MESSAGE TO DO A COMMAND INSTEAD OF AN ECHO.
                 		
                 		if ( playerExists( destPort ) )
                 		{
                 			Player destPlayer = getPlayerOnPort( destPort );
                 			if ( destPlayer != null )
                 			{
-                				Socket s = destPlayer.getConn();
-                				PrintStream destPlayerOut = new PrintStream( destPlayer.getConn().getOutputStream() );
+                				Socket destConn = destPlayer.getConn();
+                				PrintStream destPlayerOut = new PrintStream( destConn.getOutputStream() );
                 				destPlayerOut.println( "wwss ClientHandler: message from player on port " + this.conn.getPort() + " to player on port " + destPort + ":" );
                 				destPlayerOut.println( "wwss ClientHandler:" + strippedLine );
+                			}
+                			else 
+                			{
+                				out.println( "wwss ClientHandler: unknown player: " + destPort );
+                			}
+                		}
+                		else 
+                		{
+                			out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
+                		}
+                	}
+                	
+                	// parse format example: 'selectOpponent_port_12345:54321'
+                	if ( prefix.startsWith( WWSocketServer.SELECT_OPPONENT_PORT ) )
+                	{
+                		prefixMatched = true;
+                   		String destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
+                   		int destPort = new Integer( destPortStr );
+                		logMsg( "parsed destPort is: " + destPort ); //TODO: this may not correctly parse all values
+                		
+                		if ( playerExists( destPort ) )
+                		{
+                			Player opponent = getPlayerOnPort( destPort );
+                			if ( opponent != null )
+                			{
+                				Player originatingPlayer = this.getPlayerOnPort( this.conn.getPort() );
+                				Socket opponentConn = opponent.getConn();
+                				PrintStream opponentOut = new PrintStream( opponentConn.getOutputStream() );
+                				opponentOut.println( "wwss ClientHandler: player on port " + this.conn.getPort() + " has selected you as their opponent. Your port: " + destPort );
+                				originatingPlayer.setOpponent( opponent );
+                				opponent.setOpponent( originatingPlayer );
+                				
+                				if ( originatingPlayer.getOpponent().equals( opponent ) && opponent.getOpponent().equals( originatingPlayer ) )
+                				{
+                					out.println( "wwss ClientHandler: confirmed: your opponent is now player on port: " + originatingPlayer.getOpponent().getPort() );
+                					opponentOut.println( "wwss ClientHandler: confirmed: your opponent is now player on port: " + opponent.getOpponent().getPort() );	// opponent's opponent is originating player
+                				}	
                 			}
                 			else 
                 			{
@@ -203,8 +239,6 @@ class ClientHandler extends Thread
             			{
             				out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
             			}
-                		
-                		
                 	}
                 	
                 	// unknown prefix or no prefix
@@ -273,6 +307,11 @@ class ClientHandler extends Thread
 		}
 		
 		return foundPlayer;
+	}
+	
+	private void selectOpponentOnPort ( int port )
+	{
+		
 	}
 	
 	public void logMsg(String msg)
