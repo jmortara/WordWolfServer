@@ -1,14 +1,92 @@
-Nov 26, 2014 5:17:02 PM WWSocketServer main
+Nov 28, 2014 3:12:30 PM WWSocketServer main
 INFO: wwss Log Start ---------------------------------- 
-Nov 26, 2014 5:17:02 PM WWSocketServer main
+Nov 28, 2014 3:12:30 PM WWSocketServer main
 INFO: wwss First log message
-Nov 26, 2014 5:17:02 PM WWSocketServer main
+Nov 28, 2014 3:12:30 PM WWSocketServer main
 INFO: wwss main: attempting to create a ServerSocket on port: 4001
-Nov 26, 2014 5:17:05 PM ClientHandler <init>
+Nov 28, 2014 3:12:33 PM ClientHandler <init>
 INFO: wwss ClientHandler constructor.
-Nov 26, 2014 5:17:27 PM ClientHandler logMsg
-INFO: wwss ClientHandler 49463 received: hi
-Nov 26, 2014 5:17:27 PM ClientHandler logMsg
-INFO: wwss ClientHandler 49463 Server thread sending back : hi
-Nov 26, 2014 5:17:31 PM ClientHandler logMsg
-INFO: wwss ClientHandler 49463 Client disconnected. Closing socket.
+Nov 28, 2014 3:12:37 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: echo: hi
+Nov 28, 2014 3:12:37 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 4
+Nov 28, 2014 3:12:37 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: echo:
+Nov 28, 2014 3:12:37 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 echo: Server thread sending back :   hi
+Nov 28, 2014 3:12:50 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_12345:
+Nov 28, 2014 3:12:50 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 24
+Nov 28, 2014 3:12:50 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port_12345:
+Nov 28, 2014 3:12:50 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 parsed destPort is: 12345
+Nov 28, 2014 3:13:08 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_123456: hi
+Nov 28, 2014 3:13:08 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 25
+Nov 28, 2014 3:13:08 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port_123456:
+Nov 28, 2014 3:13:08 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 parsed destPort is: 123456
+Nov 28, 2014 3:13:19 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_1234: hi
+Nov 28, 2014 3:13:19 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 23
+Nov 28, 2014 3:13:19 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port_1234:
+Nov 28, 2014 3:13:19 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 parsed destPort is: 1234
+Nov 28, 2014 3:13:28 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port:123: hi
+Nov 28, 2014 3:13:28 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 18
+Nov 28, 2014 3:13:28 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port:
+Nov 28, 2014 3:13:28 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Unknown message prefix.
+Nov 28, 2014 3:13:43 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlaueryer_port_123: hi
+Nov 28, 2014 3:13:43 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 28
+Nov 28, 2014 3:13:43 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlaueryer_port_123:
+Nov 28, 2014 3:13:43 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Unknown message prefix.
+Nov 28, 2014 3:13:53 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_123: hi
+Nov 28, 2014 3:13:53 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 22
+Nov 28, 2014 3:13:53 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port_123:
+Nov 28, 2014 3:13:53 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 parsed destPort is: 123
+Nov 28, 2014 3:14:02 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_12: hi
+Nov 28, 2014 3:14:02 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 21
+Nov 28, 2014 3:14:02 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port_12:
+Nov 28, 2014 3:14:02 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 parsed destPort is: 12
+Nov 28, 2014 3:14:09 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_1: hi
+Nov 28, 2014 3:14:09 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 20
+Nov 28, 2014 3:14:09 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port_1:
+Nov 28, 2014 3:14:09 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 parsed destPort is: 1
+Nov 28, 2014 3:14:18 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_1234567;
+Nov 28, 2014 3:14:23 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_212
+Nov 28, 2014 3:14:34 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 received: messagePlayer_port_12345678: hi
+Nov 28, 2014 3:14:34 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Colon character found. Assume this indicates a message prefix. Found at char: 27
+Nov 28, 2014 3:14:34 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 Message prefix is: messagePlayer_port_12345678:
+Nov 28, 2014 3:14:34 PM ClientHandler logMsg
+INFO: wwss ClientHandler 59376 parsed destPort is: 12345678
