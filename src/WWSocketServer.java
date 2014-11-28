@@ -145,6 +145,7 @@ class ClientHandler extends Thread
             out.println("Server Version " + Model.VERSION);
             out.println("You are on port: " + this.conn.getPort() );
             
+            // create new Player
             createPlayer( this.conn );
  
             //Now start reading input from client
@@ -182,7 +183,27 @@ class ClientHandler extends Thread
                 		logMsg( "parsed destPort is: " + destPort ); //TODO: this may not correctly parse all values
                 		
                 		////////////// START HERE. THE PORT SEEMS TO BE DETECTED. WE JUST NEED TO TRIAGE THE MESSAGE TO DO A COMMAND INSTEAD OF AN ECHO.
-                		// make new player!
+                		
+                		if ( playerExists( destPort ) )
+                		{
+                			Player destPlayer = getPlayerOnPort( destPort );
+                			if ( destPlayer != null )
+                			{
+                				Socket s = destPlayer.getConn();
+                				PrintStream destPlayerOut = new PrintStream( destPlayer.getConn().getOutputStream() );
+                				destPlayerOut.println( "wwss ClientHandler: message from player on port " + this.conn.getPort() + " to player on port " + destPort + ":" );
+                				destPlayerOut.println( "wwss ClientHandler:" + strippedLine );
+                			}
+                			else 
+                			{
+                				out.println( "wwss ClientHandler: unknown player: " + destPort );
+                			}
+                		}
+            			else 
+            			{
+            				out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
+            			}
+                		
                 		
                 	}
                 	
@@ -219,7 +240,39 @@ class ClientHandler extends Thread
 		
 		Model.players.add( player );
 		
+		logMsg( " New Player Created! Num players now: " + Model.players.size() );
+	}
+	
+	private Boolean playerExists( int port )
+	{
+		logMsg( "playerExists on port? " + port );
+		Boolean playerFound = false;
+		for ( Player player : Model.players )
+		{
+			if ( player.getPort() == port )
+			{
+				playerFound = true;
+				break;
+			}
+		}
 		
+		logMsg( "playerFound: " + playerFound );
+		return playerFound;
+	}
+	
+	private Player getPlayerOnPort( int port )
+	{
+		logMsg( "getPlayerOnPort on port " + port );
+		Player foundPlayer = null;
+		for ( Player playerInList : Model.players )
+		{
+			if ( playerInList.getPort() == port )
+			{
+				foundPlayer = playerInList;
+			}
+		}
+		
+		return foundPlayer;
 	}
 	
 	public void logMsg(String msg)
@@ -227,3 +280,4 @@ class ClientHandler extends Thread
 		log.info("wwss ClientHandler " + conn.getPort() + " " + msg);
 	}
 }
+

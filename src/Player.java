@@ -9,6 +9,19 @@ public class Player
 	private Socket conn;
 	private int port;
 	
+	public int getPort() {
+		return port;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	public Socket getConn() {
+		return conn;
+	}
+
+	
 	public Player(Socket conn) 
 	{
 		this.conn = conn;
