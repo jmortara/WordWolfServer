@@ -32,10 +32,12 @@ public class WWSocketServer
     private static SimpleFormatter logFormatter;
     
     //message prefixes
-    public static final String ECHO = "echo:";
-    public static final String MESSAGE_PLAYER_PORT = "messagePlayer_port_";
-    public static final String SELECT_OPPONENT_PORT = "selectOpponent_port_";
-    public static final String MESSAGE_OPPONENT = "messageOpponent:";
+    public static final String ECHO						= "echo:";
+    public static final String GET_OPPONENT_PORTS		= "getOpponentPorts:";
+    public static final String MESSAGE_PLAYER_PORT		= "messagePlayer_port_";
+    public static final String SELECT_OPPONENT_PORT		= "selectOpponent_port_";
+    public static final String MESSAGE_OPPONENT 		= "messageOpponent:";
+	public static final String SEND_NEW_CURRENT_SCORE	= "sendNewCurrentScore:";
     
     
 
@@ -61,6 +63,7 @@ public class WWSocketServer
         	ioe.printStackTrace();
         }
         log.info("wwss First log message");
+        log.info("wwss Server version: " + Model.VERSION);
 
         
         // socket setup
@@ -174,7 +177,23 @@ class ClientHandler extends Thread
                 	prefix = line.substring( 0, firstColonIndex + 1 );
                 	strippedLine = line.substring( firstColonIndex + 1, line.length() );
                 	lastUnderscoreInPrefixIndex = prefix.lastIndexOf( "_" );	//this underscore is not used in all prefix cases
-                	logMsg("Message prefix is: " + prefix);
+                	logMsg("Received message: " + line);
+                	
+                	// parse format example: 'getOpponentPorts:' (colon required)
+                	if ( prefix.equals( WWSocketServer.GET_OPPONENT_PORTS ) )
+                	{
+                		prefixMatched = true;
+                		String portsList = "";
+                		for ( Player player : Model.players )
+                		{
+                			if ( !player.equals( originatingPlayer  ) )
+                			{
+                				portsList += player.getPort();
+                				portsList += " ";
+                			}
+                		}
+                		out.println( "wwss ClientHandler: available opponent ports: " + portsList );
+                	}
                 	
                 	
                 	// parse format example: 'echo:hello'
@@ -257,12 +276,31 @@ class ClientHandler extends Thread
                 		prefixMatched = true;
                 		opponent = originatingPlayer.getOpponent();
                 		
-                		if ( originatingPlayer.getOpponent() != null )
+                		if ( opponent != null )
+                		{
+                			opponentConn = opponent.getConn();
+                			opponentOut = new PrintStream( opponentConn.getOutputStream() );	//TODO: when to close?
+                			opponentOut.println( "wwss ClientHandler: message from your opponent:" );
+                			opponentOut.println( " " + strippedLine );
+                		}
+                		else 
+                		{
+                			out.println( "wwss ClientHandler: you have no opponent selected." );
+                		}
+                	}
+                	
+                	// parse format example: 'sendNewCurrentScore:12' 
+                	if ( prefix.equals( WWSocketServer.SEND_NEW_CURRENT_SCORE ) )
+                	{
+                		prefixMatched = true;
+                		opponent = originatingPlayer.getOpponent();
+                		
+                		if ( opponent != null )
                 		{
             				opponentConn = opponent.getConn();
             				opponentOut = new PrintStream( opponentConn.getOutputStream() );	//TODO: when to close?
             				opponentOut.println( "wwss ClientHandler: message from your opponent:" );
-            				opponentOut.println( " " + strippedLine );
+            				opponentOut.println( "My new score is: " + strippedLine );
                 		}
             			else 
             			{
@@ -338,12 +376,12 @@ class ClientHandler extends Thread
 		
 		return foundPlayer;
 	}
-	
+	/*
 	private void selectOpponentOnPort ( int port )
 	{
 		
 	}
-	
+	*/
 	public void logMsg(String msg)
 	{
 		log.info("wwss ClientHandler " + conn.getPort() + " " + msg);
