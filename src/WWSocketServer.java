@@ -165,7 +165,7 @@ class ClientHandler extends Thread
            		String strippedLine;
            		Player originatingPlayer = this.getPlayerOnPort( this.conn.getPort() );
            		String destPortStr;
-           		int destPort;
+           		Integer destPort;
            		Player destPlayer;
            		Socket opponentConn;
            		PrintStream opponentOut;
@@ -210,7 +210,7 @@ class ClientHandler extends Thread
                 	{
                 		prefixMatched = true;
                 		destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
-                		destPort = new Integer( destPortStr );
+                		destPort = Integer.parseInt( destPortStr );
                 		logMsg( "parsed destPort is: " + destPort ); //TODO: this may not correctly parse all values
                 		
                 		if ( playerExists( destPort ) )
@@ -239,7 +239,7 @@ class ClientHandler extends Thread
                 	{
                 		prefixMatched = true;
                 		destPortStr = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
-                		destPort = new Integer( destPortStr );
+                		destPort = Integer.parseInt( destPortStr );
                 		logMsg( "parsed destPort is: " + destPort ); //TODO: this may not correctly parse all values
                 		
                 		if ( playerExists( destPort ) )
