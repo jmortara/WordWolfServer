@@ -33,9 +33,11 @@ public class WWSocketServer
     
     //message prefixes
     public static final String ECHO						= "echo:";
+    public static final String SET_USERNAME				= "setUsername:";
     public static final String GET_OPPONENT_PORTS		= "getOpponentPorts:";
     public static final String MESSAGE_PLAYER_PORT		= "messagePlayer_port_";
     public static final String SELECT_OPPONENT_PORT		= "selectOpponent_port_";
+    public static final String SELECT_OPPONENT_USERNAME	= "selectOpponent_username_";
     public static final String MESSAGE_OPPONENT 		= "messageOpponent:";
 	public static final String SEND_NEW_CURRENT_SCORE	= "sendNewCurrentScore:";
     
@@ -164,6 +166,11 @@ class ClientHandler extends Thread
            		String prefix;
            		String strippedLine;
            		Player originatingPlayer = this.getPlayerOnPort( this.conn.getPort() );
+           		//Player player;
+           		String username;
+           		Socket playerConn;
+           		PrintStream playerOut;           		
+           		String destUsername;
            		String destPortStr;
            		Integer destPort;
            		Player destPlayer;
@@ -178,6 +185,34 @@ class ClientHandler extends Thread
                 	strippedLine = line.substring( firstColonIndex + 1, line.length() );
                 	lastUnderscoreInPrefixIndex = prefix.lastIndexOf( "_" );	//this underscore is not used in all prefix cases
                 	logMsg("Received message: " + line);
+                	
+                	
+                	// parse format example: 'setUsername:jimmyjones' (colon required)
+                	if ( prefix.startsWith( WWSocketServer.SET_USERNAME ) )
+                	{
+                		prefixMatched = true;
+                		username = line.substring( firstColonIndex + 1, line.length() );
+                		logMsg( "parsed username is: " + username );
+                		
+                		if ( originatingPlayer.getUsername() == null )
+            			{
+                			logMsg( "ok, your username has not been set yet..." );
+                    		if ( getPlayerByUsername( username ) == null )	//TODO: some validation step. assume valid username input for now
+                    		{
+                    			logMsg( "ok, that username is available..." );
+                        		
+                    			originatingPlayer.setUsername( username );
+                    			//playerOut = new PrintStream( originatingPlayer.getConn().getOutputStream() ); 
+                    			out.println( "wwss ClientHandler: confirmed: username is assigned to you: " + originatingPlayer.getUsername() );
+                    		}
+            			}
+                		else
+                		{
+                			logMsg( "WARNING - your username has already been set: " + originatingPlayer.getUsername() );
+                		}
+                		
+                	}
+                	
                 	
                 	// parse format example: 'getOpponentPorts:' (colon required)
                 	if ( prefix.equals( WWSocketServer.GET_OPPONENT_PORTS ) )
@@ -204,6 +239,7 @@ class ClientHandler extends Thread
     	            	logMsg("echo: Server thread sending back : " + " " + strippedLine);
     	            	out.println( "wwss ClientHandler echoing: " + " " + line );
                 	}
+                	
                 	
                 	// parse format example: 'messagePlayer_port_1234:hello other player'
                 	if ( prefix.startsWith( WWSocketServer.MESSAGE_PLAYER_PORT ) )
@@ -233,6 +269,7 @@ class ClientHandler extends Thread
                 			out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
                 		}
                 	}
+                	
                 	
                 	// parse format example: 'selectOpponent_port_12345:' (colon required)
                 	if ( prefix.startsWith( WWSocketServer.SELECT_OPPONENT_PORT ) )
@@ -270,6 +307,43 @@ class ClientHandler extends Thread
                 		}
                 	}
                 	
+                	
+                	// parse format example: 'selectOpponent_username_jimmyjones:' (colon required)
+                	if ( prefix.startsWith( WWSocketServer.SELECT_OPPONENT_USERNAME ) )
+                	{
+                		prefixMatched = true;
+                		destUsername = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
+                		logMsg( "parsed destUsername is: " + destUsername ); 
+                		
+                		if ( playerExists( destUsername ) )
+                		{
+                			opponent = getPlayerByUsername( destUsername );
+                			if ( opponent != null )
+                			{
+                				opponentConn = opponent.getConn();
+                				opponentOut = new PrintStream( opponentConn.getOutputStream() );		//TODO: when to close?
+                				opponentOut.println( "wwss ClientHandler: player " + opponent.getUsername() + " has selected you as their opponent. " );
+                				originatingPlayer.setOpponent( opponent );
+                				opponent.setOpponent( originatingPlayer );
+                				
+                				if ( originatingPlayer.getOpponent().equals( opponent ) && opponent.getOpponent().equals( originatingPlayer ) )
+                				{
+                					out.println( "wwss ClientHandler: confirmed: your opponent is now: " + originatingPlayer.getOpponent().getUsername() );
+                					opponentOut.println( "wwss ClientHandler: confirmed: your opponent is now: " + opponent.getOpponent().getUsername() );	// opponent's opponent is originating player
+                				}	
+                			}
+                			else 
+                			{
+                				out.println( "wwss ClientHandler: unknown player username: " + destUsername );
+                			}
+                		}
+                		else 
+                		{
+                			out.println( "wwss ClientHandler: unknown player username: " + destUsername );
+                		}
+                	}
+                	
+                	
                 	// parse format example: 'messageOpponent:hello' 
                 	if ( prefix.equals( WWSocketServer.MESSAGE_OPPONENT ) )
                 	{
@@ -288,6 +362,7 @@ class ClientHandler extends Thread
                 			out.println( "wwss ClientHandler: you have no opponent selected." );
                 		}
                 	}
+                	
                 	
                 	// parse format example: 'sendNewCurrentScore:12' 
                 	if ( prefix.equals( WWSocketServer.SEND_NEW_CURRENT_SCORE ) )
@@ -315,6 +390,10 @@ class ClientHandler extends Thread
                 		logMsg( "Unknown message prefix. Don't forget trailing colon where necessary." );
                 	}
            			
+           		}
+           		else
+           		{
+           			logMsg( "Entry ignored.");
            		}
             	
             }
@@ -348,6 +427,13 @@ class ClientHandler extends Thread
 	private Boolean playerExists( int port )
 	{
 		logMsg( "playerExists on port? " + port );
+
+		if ( Model.players == null ) 
+		{
+			logMsg( "playerExists: players list is null." );
+			return false;
+		}
+		
 		Boolean playerFound = false;
 		for ( Player player : Model.players )
 		{
@@ -362,20 +448,82 @@ class ClientHandler extends Thread
 		return playerFound;
 	}
 	
-	private Player getPlayerOnPort( int port )
+	private Boolean playerExists( String username ) 
 	{
-		logMsg( "getPlayerOnPort on port " + port );
-		Player foundPlayer = null;
-		for ( Player playerInList : Model.players )
+		logMsg( "playerExists? " + username );
+
+		if ( Model.players == null ) 
 		{
-			if ( playerInList.getPort() == port )
+			logMsg( "playerExists: players list is null." );
+			return false;
+		}
+		
+		Boolean playerFound = false;
+		for ( Player player : Model.players )
+		{
+			if ( player.getUsername().equals( username ) )
 			{
-				foundPlayer = playerInList;
+				playerFound = true;
+				break;
 			}
 		}
 		
-		return foundPlayer;
+		logMsg( "playerFound: " + playerFound );
+		return playerFound;
 	}
+
+	private Player getPlayerOnPort( int port )
+	{
+		logMsg( "getPlayerOnPort on port " + port );
+		
+		if ( Model.players == null ) 
+		{
+			logMsg( "getPlayerOnPort: players list is null." );
+			return null;
+		}
+		
+		Player existingPlayer = null;
+		for ( Player player : Model.players )
+		{
+			if ( player.getPort() == port )
+			{
+				existingPlayer = player;
+			}
+		}
+		
+		return existingPlayer;
+	}
+	
+	private Player getPlayerByUsername( String username ) 
+	{
+		logMsg( "playerExists? " + username );
+
+		if ( Model.players == null ) 
+		{
+			logMsg( "playerExists: players list is null." );
+			return null;
+		}
+		
+		Player existingPlayer = null;
+		
+		for ( Player player : Model.players )
+		{
+			if ( player.getUsername() == null )
+			{
+				logMsg( "getPlayerByUsername: no player found with username: " + username );
+				return null;
+			}
+			if ( player.getUsername().equals( username ) )
+			{
+				existingPlayer = player;
+				logMsg( "getPlayerByUsername: player found: " + existingPlayer.getUsername() );
+				break;
+			}
+		}
+		
+		return existingPlayer;
+	}
+
 	/*
 	private void selectOpponentOnPort ( int port )
 	{
