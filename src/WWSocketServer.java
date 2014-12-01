@@ -32,14 +32,16 @@ public class WWSocketServer
     private static SimpleFormatter logFormatter;
     
     //message prefixes
-    public static final String ECHO						= "echo:";
-    public static final String SET_USERNAME				= "setUsername:";
-    public static final String GET_OPPONENT_PORTS		= "getOpponentPorts:";
-    public static final String MESSAGE_PLAYER_PORT		= "messagePlayer_port_";
-    public static final String SELECT_OPPONENT_PORT		= "selectOpponent_port_";
-    public static final String SELECT_OPPONENT_USERNAME	= "selectOpponent_username_";
-    public static final String MESSAGE_OPPONENT 		= "messageOpponent:";
-	public static final String SEND_NEW_CURRENT_SCORE	= "sendNewCurrentScore:";
+    public static final String ECHO						= "/echo:";
+    public static final String SET_USERNAME				= "/setUsername:";
+    public static final String GET_USERNAME				= "/getUsername";
+    public static final String GET_OPPONENT_USERNAMES	= "/getOpponentUsernames";			// needs no colon or params
+    public static final String GET_OPPONENT_PORTS		= "/getOpponentPorts";				//TODO // needs no colon or params
+    public static final String MESSAGE_PLAYER_PORT		= "/messagePlayer_port_";			//TODO // must append colon
+    public static final String SELECT_OPPONENT_PORT		= "/selectOpponent_port_";			//TODO // must append colon
+    public static final String SELECT_OPPONENT_USERNAME	= "/selectOpponentUsername:";		// must append colon
+    public static final String MESSAGE_OPPONENT 		= "/messageOpponent:";
+	public static final String SEND_NEW_CURRENT_SCORE	= "/sendNewCurrentScore:";
     
     
 
@@ -161,10 +163,11 @@ class ClientHandler extends Thread
             	logMsg( "received: " + line );
             	
        			Boolean prefixMatched = false;
+       			String slash = "/";
            		int firstColonIndex = line.indexOf( ":" );
            		int lastUnderscoreInPrefixIndex;
            		String prefix;
-           		String strippedLine;
+           		String strippedLine = "";
            		Player originatingPlayer = this.getPlayerOnPort( this.conn.getPort() );
            		//Player player;
            		String username;
@@ -178,16 +181,42 @@ class ClientHandler extends Thread
            		PrintStream opponentOut;
            		Player opponent;
            		
-           		if ( firstColonIndex > -1 )	//TODO: improve this method of identifying prefixes
+           		if ( line.charAt( 0 ) == slash.charAt( 0 ) )	// messages starting with a slash are assumed to be intended for parsing
            		{
-           			logMsg( "Colon character found. Assume this indicates a message prefix. Found at char: " + firstColonIndex );
-                	prefix = line.substring( 0, firstColonIndex + 1 );
-                	strippedLine = line.substring( firstColonIndex + 1, line.length() );
-                	lastUnderscoreInPrefixIndex = prefix.lastIndexOf( "_" );	//this underscore is not used in all prefix cases
-                	logMsg("Received message: " + line);
+           			logMsg( "Slash found as first char. Assume this indicates a message prefix.");
+           			
+           			// determine prefix 
+           			
+           			// for colon-formatted prefixes
+           			if ( firstColonIndex > -1 )
+           			{
+           				prefix = line.substring( 0, firstColonIndex + 1 );
+           				if ( prefix != null && prefix.length() > -1 )
+           				{
+           					strippedLine = line.substring( firstColonIndex + 1, line.length() );
+           				}
+           			}
+           			// for prefixes not including a colon, no params (strippedLine) are looked for
+           			else
+           			{
+           				prefix = line.substring( 0, line.length() );
+           			}
+           			logMsg("Received message: " + line);
+
+           			lastUnderscoreInPrefixIndex = prefix.lastIndexOf( "_" );	//this underscore is not used in all prefix cases
                 	
                 	
-                	// parse format example: 'setUsername:jimmyjones' (colon required)
+                	// parse format example: '/echo:hello'
+                	if( prefix.equals( WWSocketServer.ECHO ) )
+                	{
+                		prefixMatched = true;
+                		//reply with the same message
+                		logMsg("echo: Server thread sending back : " + " " + strippedLine);
+                		out.println( "wwss ClientHandler echoing: " + " " + strippedLine );
+                	}
+
+                	
+                	// parse format example: '/setUsername:jimmyjones' 
                 	if ( prefix.startsWith( WWSocketServer.SET_USERNAME ) )
                 	{
                 		prefixMatched = true;
@@ -214,7 +243,16 @@ class ClientHandler extends Thread
                 	}
                 	
                 	
-                	// parse format example: 'getOpponentPorts:' (colon required)
+                	// parse format example: '/getUsername'
+                	if( prefix.startsWith( WWSocketServer.GET_USERNAME ) )
+                	{
+                		prefixMatched = true;
+                		logMsg("echo: Server thread sending back : " + originatingPlayer.getUsername() );
+                		out.println( "wwss ClientHandler: your username is: " + originatingPlayer.getUsername() );
+                	}
+                	
+
+                	// parse format example: 'getOpponentPorts' 
                 	if ( prefix.equals( WWSocketServer.GET_OPPONENT_PORTS ) )
                 	{
                 		prefixMatched = true;
@@ -231,14 +269,25 @@ class ClientHandler extends Thread
                 	}
                 	
                 	
-                	// parse format example: 'echo:hello'
-                	if( prefix.equals( WWSocketServer.ECHO ) )
+                	// parse format example: 'getOpponentUsernames' 
+                	if ( prefix.equals( WWSocketServer.GET_OPPONENT_USERNAMES ) )
                 	{
                 		prefixMatched = true;
-    	                 //reply with the same message, adding some text
-    	            	logMsg("echo: Server thread sending back : " + " " + strippedLine);
-    	            	out.println( "wwss ClientHandler echoing: " + " " + line );
+                		String usernames = "";
+                		if ( Model.players != null )
+                		{
+                			for ( Player player : Model.players )
+                			{
+                				if ( !player.equals( originatingPlayer  ) )
+                				{
+                					usernames += player.getUsername();
+                					usernames += " ";
+                				}
+                			}
+                			out.println( "wwss ClientHandler: available opponent usernames: " + usernames );
+                		}
                 	}
+                	
                 	
                 	
                 	// parse format example: 'messagePlayer_port_1234:hello other player'
@@ -286,7 +335,7 @@ class ClientHandler extends Thread
                 			{
                 				opponentConn = opponent.getConn();
                 				opponentOut = new PrintStream( opponentConn.getOutputStream() );		//TODO: when to close?
-                				opponentOut.println( "wwss ClientHandler: player on port " + this.conn.getPort() + " has selected you as their opponent. Your port: " + destPort );
+                				opponentOut.println( "wwss ClientHandler: player on port " + originatingPlayer.getPort() + " has selected you as their opponent. Your port: " + destPort );
                 				originatingPlayer.setOpponent( opponent );
                 				opponent.setOpponent( originatingPlayer );
                 				
@@ -308,11 +357,11 @@ class ClientHandler extends Thread
                 	}
                 	
                 	
-                	// parse format example: 'selectOpponent_username_jimmyjones:' (colon required)
+                	// parse format example: '/selectOpponentUsername:jimmyjones' (colon required)
                 	if ( prefix.startsWith( WWSocketServer.SELECT_OPPONENT_USERNAME ) )
                 	{
                 		prefixMatched = true;
-                		destUsername = line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
+                		destUsername = strippedLine;	//line.substring( lastUnderscoreInPrefixIndex + 1, firstColonIndex );
                 		logMsg( "parsed destUsername is: " + destUsername ); 
                 		
                 		if ( playerExists( destUsername ) )
@@ -322,7 +371,7 @@ class ClientHandler extends Thread
                 			{
                 				opponentConn = opponent.getConn();
                 				opponentOut = new PrintStream( opponentConn.getOutputStream() );		//TODO: when to close?
-                				opponentOut.println( "wwss ClientHandler: player " + opponent.getUsername() + " has selected you as their opponent. " );
+                				opponentOut.println( "wwss ClientHandler: player " + originatingPlayer.getUsername() + " has selected you as their opponent. " );
                 				originatingPlayer.setOpponent( opponent );
                 				opponent.setOpponent( originatingPlayer );
                 				
@@ -364,7 +413,7 @@ class ClientHandler extends Thread
                 	}
                 	
                 	
-                	// parse format example: 'sendNewCurrentScore:12' 
+                	// parse format example: '/sendNewCurrentScore:12' 
                 	if ( prefix.equals( WWSocketServer.SEND_NEW_CURRENT_SCORE ) )
                 	{
                 		prefixMatched = true;
