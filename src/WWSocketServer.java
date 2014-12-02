@@ -13,7 +13,7 @@ import java.util.logging.SimpleFormatter;
  * File -> Export as Runnable JAR
  * Upload to wordwolfgame.com/server 
  * Putty into wordwolfgame.com       // WARNING - will connect to any site hosted on jasonmortara.com
- * run Putty command: java -jar servertest3.jar
+ * run Putty command: java -jar wwserver.jar
  * Should see 'waiting for connection...'
  * Open local cmd prompt: telnet wordwolfgame.com 4000
  * Works with multiple clients. Also logs.
@@ -36,9 +36,9 @@ public class WWSocketServer
     public static final String SET_USERNAME				= "/setUsername:";
     public static final String GET_USERNAME				= "/getUsername";
     public static final String GET_OPPONENT_USERNAMES	= "/getOpponentUsernames";			// needs no colon or params
-    public static final String GET_OPPONENT_PORTS		= "/getOpponentPorts";				//TODO // needs no colon or params
-    public static final String MESSAGE_PLAYER_PORT		= "/messagePlayer_port_";			//TODO // must append colon
-    public static final String SELECT_OPPONENT_PORT		= "/selectOpponent_port_";			//TODO // must append colon
+    //public static final String GET_OPPONENT_PORTS			= "/getOpponentPorts";				//TODO // needs no colon or params
+    //public static final String MESSAGE_PLAYER_PORT		= "/messagePlayer_port_";			//TODO // must append colon
+    //public static final String SELECT_OPPONENT_PORT		= "/selectOpponent_port_";			//TODO // must append colon
     public static final String SELECT_OPPONENT_USERNAME	= "/selectOpponentUsername:";		// must append colon
     public static final String MESSAGE_OPPONENT 		= "/messageOpponent:";
 	public static final String SEND_NEW_CURRENT_SCORE	= "/sendNewCurrentScore:";
@@ -181,7 +181,7 @@ class ClientHandler extends Thread
            		PrintStream opponentOut;
            		Player opponent;
            		
-           		if ( line.charAt( 0 ) == slash.charAt( 0 ) )	// messages starting with a slash are assumed to be intended for parsing
+           		if ( line.length() > 0 && line.charAt( 0 ) == slash.charAt( 0 ) )	// messages starting with a slash are assumed to be intended for parsing
            		{
            			logMsg( "Slash found as first char. Assume this indicates a message prefix.");
            			
@@ -253,6 +253,7 @@ class ClientHandler extends Thread
                 	
 
                 	// parse format example: 'getOpponentPorts' 
+                	/*
                 	if ( prefix.equals( WWSocketServer.GET_OPPONENT_PORTS ) )
                 	{
                 		prefixMatched = true;
@@ -267,7 +268,7 @@ class ClientHandler extends Thread
                 		}
                 		out.println( "wwss ClientHandler: available opponent ports: " + portsList );
                 	}
-                	
+                	*/
                 	
                 	// parse format example: 'getOpponentUsernames' 
                 	if ( prefix.equals( WWSocketServer.GET_OPPONENT_USERNAMES ) )
@@ -291,6 +292,7 @@ class ClientHandler extends Thread
                 	
                 	
                 	// parse format example: 'messagePlayer_port_1234:hello other player'
+                	/*
                 	if ( prefix.startsWith( WWSocketServer.MESSAGE_PLAYER_PORT ) )
                 	{
                 		prefixMatched = true;
@@ -318,8 +320,8 @@ class ClientHandler extends Thread
                 			out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
                 		}
                 	}
-                	
-                	
+                	*/
+                	/*
                 	// parse format example: 'selectOpponent_port_12345:' (colon required)
                 	if ( prefix.startsWith( WWSocketServer.SELECT_OPPONENT_PORT ) )
                 	{
@@ -355,7 +357,7 @@ class ClientHandler extends Thread
                 			out.println( "wwss ClientHandler: unknown player on requested port " + destPort );
                 		}
                 	}
-                	
+                	*/
                 	
                 	// parse format example: '/selectOpponentUsername:jimmyjones' (colon required)
                 	if ( prefix.startsWith( WWSocketServer.SELECT_OPPONENT_USERNAME ) )
