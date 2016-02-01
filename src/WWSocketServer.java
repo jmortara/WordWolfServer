@@ -59,6 +59,7 @@ public class WWSocketServer
         log.info("wwss First log message");
         log.info("wwss Server version: " + Model.VERSION);
 
+        Model.init();
         
         // socket setup
         s = null;

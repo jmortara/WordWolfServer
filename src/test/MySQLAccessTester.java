@@ -1,20 +1,37 @@
-package database;
+package test;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
 import com.mortaramultimedia.wordwolf.shared.messages.LoginRequest;
+import com.mortaramultimedia.wordwolf.shared.messages.LoginResponse;
+
+import database.MySQLAccess;
+
 
 public class MySQLAccessTester
 {
-
 	private static final String TAG = "MySQLAccessTester";
+
+	private static MySQLAccess dao;
+	
+	
+	
+	public static void main(String[] args) throws SQLException
+	{
+		System.out.println("MySQLAccessTester: main");
+		testConnection();
+		
+		LoginRequest loginRequest = new LoginRequest(1, "test1", "test1pass", "test1@wordwolfgame.com");
+		LoginResponse loginResponse = dao.login(loginRequest, true);
+	}
 	
 
 	public static Boolean testConnection()
 	{
 		System.out.println("MySQLAccessTester: testConnection");
 
-		MySQLAccess dao = new MySQLAccess();
+		dao = new MySQLAccess();
 
 		try
 		{
@@ -40,7 +57,8 @@ public class MySQLAccessTester
 	 * Attempt login with the LoginRequest obj stored in the Model, say from the LoginActivity
 	 * @return
 	 */
-	public static Boolean attemptLogin(LoginRequest loginRequest)
+	
+	/*public static Boolean attemptLogin(LoginRequest loginRequest)
 	{
 		MySQLAccess dao = new MySQLAccess();
 
@@ -84,6 +102,6 @@ public class MySQLAccessTester
 			}
 		}
 		return false;
-	}
+	}*/
 	
 }

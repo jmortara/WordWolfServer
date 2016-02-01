@@ -12,13 +12,17 @@ import java.util.Date;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 
+import com.mortaramultimedia.wordwolf.shared.messages.LoginRequest;
+import com.mortaramultimedia.wordwolf.shared.messages.LoginResponse;
+
 import com.mysql.jdbc.SQLError;
 import com.mysql.jdbc.exceptions.jdbc4.CommunicationsException;
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
+
 public class MySQLAccess 
 {
-  private Connection connection = null;
+  private Connection sqlConnection = null;
   private Statement statement = null;
   private PreparedStatement preparedStatement = null;
   private ResultSet resultSet = null;
@@ -30,7 +34,7 @@ public class MySQLAccess
       // this will load the MySQL driver, each DB has its own driver
       Class.forName("com.mysql.jdbc.Driver");
       // setup the connection with the DB.
-      connection = DriverManager.getConnection("jdbc:mysql://mysql.wordwolfgame.com:3306/wordwolfdb?user=jmortara&password=wordwolf99");
+      sqlConnection = DriverManager.getConnection("jdbc:mysql://mysql.wordwolfgame.com:3306/wordwolfdb?user=jmortara&password=wordwolf99");
       
 		//get some of the properties we need from an external properties file in the resource bundle. use them for connecting. 
 		 PropertyResourceBundle bundle = (PropertyResourceBundle) ResourceBundle.getBundle("database"); // i.e. the database.properties file
@@ -44,7 +48,7 @@ public class MySQLAccess
 		 Class.forName( JDBCDriver );	// this loads the defined JDBC class by name
 		 String connectionStr	= url + ":" + port + "/" + dbname + "?" + "user=" + user + "&password=" + password; 
 		 
-		 connection = DriverManager.getConnection( connectionStr );
+		 sqlConnection = DriverManager.getConnection( connectionStr );
 
 		 System.out.println("connectToDataBase: CONNECTION SUCCESSFUL");
     } 
@@ -74,7 +78,7 @@ public class MySQLAccess
 	  try
 	  {
 	      // statements allow to issue SQL queries to the database
-	      statement = connection.createStatement();
+	      statement = sqlConnection.createStatement();
 	      
 	      // resultSet gets the result of the SQL query
 	      resultSet = statement.executeQuery("SELECT * from users");
@@ -112,7 +116,7 @@ public class MySQLAccess
 	  }
   }
   
-  public void createNewUser(String username, String password, String email) throws Exception
+  public Boolean createNewUser(String username, String password, String email) throws Exception
   {	
 	  System.out.println("createNewUser: " + username);
 	  try
@@ -122,7 +126,7 @@ public class MySQLAccess
 //	      resultSet = statement.execute("INSERT INTO users (username, password, email, current_score, high_score) VALUES ('" + username + "', 'pass123', 'm@m.com', 0, 0)");
 
 	      // preparedStatements can use variables and are more efficient
-	      preparedStatement = connection.prepareStatement("INSERT INTO users (username, password, email, current_score, high_score) VALUES (?, ?, ?, ?, ?)");
+	      preparedStatement = sqlConnection.prepareStatement("INSERT INTO users (username, password, email, current_score, high_score) VALUES (?, ?, ?, ?, ?)");
 	      // "myuser, webpage, datum, summary, COMMENTS from FEEDBACK.COMMENTS");
 	      // parameters start with 1
 	      preparedStatement.setString(1, username);
@@ -144,19 +148,21 @@ public class MySQLAccess
 	      
 //	      resultSet = statement.executeQuery("select * from FEEDBACK.COMMENTS");
 //	      writeMetaData(resultSet);
+		  return true;
 	  }
-	  catch( MySQLIntegrityConstraintViolationException dupeUserException)
+	  catch(MySQLIntegrityConstraintViolationException dupeUserException)
 	  {
 		  System.out.println("createNewUser: FAILED TO CREATE NEW USER. USERNAME ALREADY EXISTS: " + username);
 	  }
 	  catch (SQLException e)
 	  {
-		  throw e;
+		  e.printStackTrace();
 	  }
 	  finally
 	  {
 		  preparedStatement.close();
 	  }
+	  return false;
   }
   
   public void createRandomNewUser() throws Exception
@@ -177,7 +183,7 @@ public class MySQLAccess
 	{
 		int existingCurrentScore = userRecord.getInt("current_score");
 		int newCurrentScore = existingCurrentScore + 1;
-	      preparedStatement = connection.prepareStatement("UPDATE users SET current_score=" + newCurrentScore + " WHERE username='" + user + "';");
+	      preparedStatement = sqlConnection.prepareStatement("UPDATE users SET current_score=" + newCurrentScore + " WHERE username='" + user + "';");
 //	      preparedStatement.setInt(5, 0);
 	      preparedStatement.executeUpdate();
 	      
@@ -233,11 +239,65 @@ public class MySQLAccess
 	*/
   }
   
+	public LoginResponse login(LoginRequest request, Boolean close) throws SQLException
+	{
+		System.out.println("MySQLAccess: login: " + request);
+		
+		LoginResponse response = null;
+		String errMsg = null;
+		try
+		{
+			statement = sqlConnection.createStatement();
+
+			// resultSet gets the result of the SQL query
+			resultSet = statement.executeQuery( "SELECT * from users WHERE username='" + request.getUserName() + "' AND password='" + request.getPassword() + "'");
+
+			// TODO: there should only be one row. if there is more than one
+			// then multiple users have returned with the same username
+			boolean resultIsValid = resultSet.first();		// move the cursor to the first row; return true if that command is successful
+			if (resultIsValid)
+			{
+				
+				System.out.println("MySQLAccess: login: user record located: " + request.getUserName());
+				//TODO: this section may also reveal issues if the ResultSet has more than one row
+				String username 	= resultSet.getString("username");
+				String email 		= resultSet.getString("email");
+				int current_score 	= resultSet.getInt("current_score");
+				int high_score 		= resultSet.getInt("high_score");
+				
+				System.out.println("MySQLAccess: login: username:" + username + ", email:" + email + ", current_score:" + current_score + ", high_score:" + high_score);
+				response = new LoginResponse(true, 1, username, null, false, 0);
+			} 
+			// result set did not find at least one matching user? return response w/ error
+			else
+			{
+				response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EMPTY USER/PASSWORD QUERY RESULT", false, 0);
+				Exception e = new Exception( "MySQLAccess: login: FAILED. USERNAME NOT FOUND: " + request.getUserName());
+				throw e;
+			}
+		} 
+		// attempt to create result set threw error? return response w/ error
+		catch (Exception e)
+		{
+			response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD", false, 0);
+			System.out.println(e);
+		} 
+		finally
+		{
+			if (null != resultSet && close)
+			{
+				resultSet.close();
+			}
+		}
+
+		return response;
+	}
+  
   public ResultSet getUser(String user, Boolean close) throws SQLException
   {
 	try
 	{
-		statement = connection.createStatement();
+		statement = sqlConnection.createStatement();
 	      
 	      // resultSet gets the result of the SQL query
 	      resultSet = statement.executeQuery("SELECT * from users WHERE username='" + user + "'");

@@ -333,7 +333,7 @@ class ClientHandler extends Thread
             log.info("wwss IOException on socket : " + e);
             e.printStackTrace();
         }
-    }
+    } // end run()
 	
 	private void createPlayer( Socket conn )
 	{
