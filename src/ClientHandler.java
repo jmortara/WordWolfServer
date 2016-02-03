@@ -337,7 +337,7 @@ class ClientHandler extends Thread
 	
 	private void createPlayer( Socket conn )
 	{
-		Player player = new Player( conn );
+		Player player = new Player( conn, this.in, this.out );
 		
 		if ( Model.players == null )
 		{

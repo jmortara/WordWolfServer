@@ -1,7 +1,11 @@
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.logging.Logger;
 
-import com.mortaramultimedia.wordwolf.shared.constants.Constants;
+import com.mortaramultimedia.wordwolf.shared.constants.*;
+import com.mortaramultimedia.wordwolf.shared.messages.*;
 
 
 /**
@@ -13,6 +17,8 @@ public class Player
 {
 	private static Logger log;
 	private Socket conn;
+	private ObjectInputStream in;
+	private ObjectOutputStream out;
 	private int port;
 	private Player opponent;
 	private String username;
@@ -23,9 +29,11 @@ public class Player
 	 * Constructor
 	 * @param conn
 	 */
-	public Player(Socket conn) 
+	public Player(Socket conn, ObjectInputStream in, ObjectOutputStream out) 
 	{
 		this.conn = conn;
+		this.in   = in;
+		this.out  = out;
 		this.port = this.conn.getPort();
 		
 		log = Logger.getLogger( "Player " + this.port );
@@ -97,6 +105,63 @@ public class Player
 	public void setUsername(String username)
 	{
 		this.username = username;
+	}
+	
+	public void handleSimpleMessage(SimpleMessage msg)
+	{
+		log.info("handleSimpleMessage: " + msg);
+		try
+		{
+			out.writeObject(msg);
+		} 
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	public void handleMessageFromOpponent(OpponentBoundMessage msgObj)
+	{
+		log.info("handleMessageFromOpponent: " + msgObj);
+		try
+		{
+			out.writeObject(msgObj);
+		} 
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	public void handleSelectOpponentRequest(SelectOpponentRequest request)
+	{
+		log.info("handleSelectOpponentRequest: " + request);
+		try
+		{
+			out.writeObject(request);
+		} 
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	public void handleSelectOpponentResponse(SelectOpponentResponse response)
+	{
+		log.info("handleSelectOpponentResponse: " + response);
+		
+		if(response.getRequestAccepted() == true)
+		{
+			//TODO: MAKE PLAYERS OPPONENTS OF EACH OTHER *******************************************
+		}
+		try
+		{
+			out.writeObject(response);
+		} 
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
 	}
 
 

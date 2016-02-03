@@ -133,6 +133,27 @@ class ClientHandlerTest extends Thread
             		handleGetPlayerListRequest(((GetPlayerListRequest) obj), out);
             	}
             	/**
+            	 * If receiving a SelectOpponentRequest, which is a request from one player to another to become opponents.
+            	 */
+            	else if(obj instanceof SelectOpponentRequest)
+            	{
+            		handleSelectOpponentRequest(((SelectOpponentRequest) obj), out);
+            	}
+    			/**
+    			 * If receiving a SelectOpponentResponse.
+    			 */
+    			else if(obj instanceof SelectOpponentResponse)
+    			{
+    				handleSelectOpponentResponse(((SelectOpponentResponse) obj), out);
+    			}
+    			/**
+    			 * If receiving an OpponentBoundMessage, which is a message from a client to that client's opponent.
+    			 */
+    			else if(obj instanceof OpponentBoundMessage)
+    			{
+    				handleOpponentBoundMessage(((OpponentBoundMessage) obj), out);
+    			}
+            	/**
             	 * If receiving a CreateNewAccountRequest...
             	 */
             	else if(obj instanceof CreateNewAccountRequest)
@@ -363,6 +384,66 @@ class ClientHandlerTest extends Thread
 		}
 	}
 	
+	private void handleSelectOpponentRequest(SelectOpponentRequest request, ObjectOutputStream out)
+	{
+		log.info("wwss handleSelectOpponentRequest: " + request);
+		
+		// source user initiates the request to the destination user
+		String sourceUsername = request.getSourceUsername();
+		Player sourcePlayer = getPlayerByUsername(sourceUsername);
+		
+		try
+		{
+			String destinationUsername = request.getDestinationUserName();
+			Player destinationPlayer = getPlayerByUsername(destinationUsername);
+			if(destinationPlayer != null)
+			{
+				destinationPlayer.handleSelectOpponentRequest(request);
+			}
+			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	private void handleSelectOpponentResponse(SelectOpponentResponse response, ObjectOutputStream out)
+	{
+		log.info("wwss handleSelectOpponentResponse: " + response);
+		
+		// source player accepts or rejects the request in this response
+		String sourceUsername = response.getSourceUserName();
+		Player sourcePlayer = getPlayerByUsername(sourceUsername);
+		
+		try
+		{
+			String destinationUsername = response.getDestinationUsername();
+			Player destinationPlayer = getPlayerByUsername(destinationUsername);
+			if(destinationPlayer != null)
+			{
+				destinationPlayer.handleSelectOpponentResponse(response);
+				if(response.getRequestAccepted())
+				{
+					matchPlayers(sourcePlayer, destinationPlayer);
+				}
+			}
+			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	private void handleOpponentBoundMessage(OpponentBoundMessage request, ObjectOutputStream out)
+	{
+    	log.info("wwss handleOpponentBoundMessage: " + request);
+    	
+    	Player opponent = player.getOpponent();
+    	opponent.handleMessageFromOpponent(request);
+	}
+	
 	//TODO:FILL IN
 	private void handleCreateNewAccountRequest(CreateNewAccountRequest request, ObjectOutputStream out)
 	{
@@ -423,7 +504,7 @@ class ClientHandlerTest extends Thread
     	log.info("wwss createPlayer w/login response fields");
 		try
 		{
-			Player player = new Player(this.connection);
+			Player player = new Player(this.connection, this.in, this.out);
 			player.setUsername(login.getUserName());
 			
 			if(playerExists(player.getUsername()))
@@ -493,11 +574,11 @@ class ClientHandlerTest extends Thread
 
 	private Player getPlayerByUsername( String username ) 
 	{
-		logMsg( "playerExists? " + username );
+		logMsg( "getPlayerByUsername? " + username );
 
 		if ( Model.players == null ) 
 		{
-			logMsg( "playerExists: players list is null." );
+			logMsg( "getPlayerByUsername: players list is null." );
 			return null;
 		}
 		
@@ -521,6 +602,26 @@ class ClientHandlerTest extends Thread
 		return existingPlayer;
 	}
 
+	private Boolean matchPlayers(Player player1, Player player2)
+	{
+		try
+		{
+			log.info("wwss matchPlayers: matching these two players as opponents: " + player1.getUsername() + ", " + player2.getUsername());
+			player1.setOpponent(player2);
+			player2.setOpponent(player1);
+			log.info("wwss matchPlayers: match successful.");
+			SimpleMessage confirmationMsg = new SimpleMessage("You are confirmed to have an opponent!");
+			player1.handleSimpleMessage(confirmationMsg);
+			player2.handleSimpleMessage(confirmationMsg);
+			return true;
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		return false;
+	}
+	
 	public void logMsg(String msg)
 	{
 		log.info("wwss ClientHandlerTest " + connection.getPort() + " " + msg);
