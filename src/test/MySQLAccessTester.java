@@ -17,14 +17,14 @@ public class MySQLAccessTester
 	
 	
 	
-	public static void main(String[] args) throws SQLException
+	/*public static void main(String[] args) throws SQLException
 	{
 		System.out.println("MySQLAccessTester: main");
 		testConnection();
 		
 		LoginRequest loginRequest = new LoginRequest(1, "test1", "test1pass", "test1@wordwolfgame.com");
 		LoginResponse loginResponse = dao.login(loginRequest, true);
-	}
+	}*/
 	
 
 	public static Boolean testConnection()

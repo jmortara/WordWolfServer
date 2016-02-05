@@ -27,14 +27,15 @@ public class MySQLAccess
   private PreparedStatement preparedStatement = null;
   private ResultSet resultSet = null;
 
-  public void connectToDataBase() throws Exception
+  public Boolean connectToDataBase() throws Exception
   {
+	System.out.println("connectToDataBase");
     try 
     {
       // this will load the MySQL driver, each DB has its own driver
       Class.forName("com.mysql.jdbc.Driver");
       // setup the connection with the DB.
-      sqlConnection = DriverManager.getConnection("jdbc:mysql://mysql.wordwolfgame.com:3306/wordwolfdb?user=jmortara&password=wordwolf99");
+      // sqlConnection = DriverManager.getConnection("jdbc:mysql://mysql.wordwolfgame.com:3306/wordwolfdb?user=jmortara&password=wordwolf99");
       
 		//get some of the properties we need from an external properties file in the resource bundle. use them for connecting. 
 		 PropertyResourceBundle bundle = (PropertyResourceBundle) ResourceBundle.getBundle("database"); // i.e. the database.properties file
@@ -51,25 +52,22 @@ public class MySQLAccess
 		 sqlConnection = DriverManager.getConnection( connectionStr );
 
 		 System.out.println("connectToDataBase: CONNECTION SUCCESSFUL");
+		 return true;
     } 
     catch (CommunicationsException e) 
     {
     	System.out.println("connectToDataBase: CONNECTION FAILED. COMMUNICATIONS LINK FAILURE. POSSIBLE CONNECTION TIMEOUT OR WRONG PORT.");
-    	throw e;
+    	return false;
     } 
     catch (SQLException e) 
     {
     	 System.out.println("connectToDataBase: CONNECTION FAILED. ACCESS DENIED.");
-    	 throw e;
+    		return false;
     } 
     catch (Exception e) 
     {
-      throw e;
+    	return false;
     } 
-    finally 
-    {
-      
-    }
   }
 
   public void getAllUsers() throws Exception 
@@ -239,9 +237,12 @@ public class MySQLAccess
 	*/
   }
   
-	public LoginResponse login(LoginRequest request, Boolean close) throws SQLException
+	public LoginResponse login(LoginRequest request, Boolean close)
 	{
 		System.out.println("MySQLAccess: login: " + request);
+		System.out.println("MySQLAccess: sqlConnection exists? ********************* " + sqlConnection);
+		
+		//TODO: FIX NULL POINTER EXCEPTION SOMEWHERE IN HERE. DEBUG SERVER?
 		
 		LoginResponse response = null;
 		String errMsg = null;
@@ -273,20 +274,38 @@ public class MySQLAccess
 			{
 				response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EMPTY USER/PASSWORD QUERY RESULT", false, 0);
 				Exception e = new Exception( "MySQLAccess: login: FAILED. USERNAME NOT FOUND: " + request.getUserName());
-				throw e;
 			}
 		} 
 		// attempt to create result set threw error? return response w/ error
-		catch (Exception e)
+		catch (SQLException e)
 		{
-			response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD", false, 0);
-			System.out.println(e);
+			if (sqlConnection == null)
+			{
+				response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD. SQLCONNECTION IS NULL.", false, 0);
+			}
+			else response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD. SQLCONNECTION EXISTS.", false, 0);
+			e.printStackTrace();
 		} 
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
 		finally
 		{
 			if (null != resultSet && close)
 			{
-				resultSet.close();
+				try
+				{
+					resultSet.close();
+				} 
+				catch (SQLException e)
+				{
+					e.printStackTrace();
+				}
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
 			}
 		}
 

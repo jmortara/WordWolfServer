@@ -18,7 +18,7 @@
 		<link>
 			<name>WordWolfShared</name>
 			<type>2</type>
-			<location>E:/Eclipse_Workspaces/workspace_eclipse_JavaEE/versioned/WordWolf/WordWolfShared</location>
+			<locationURI>$%7BPARENT-1-PROJECT_LOC%7D/WordWolfShared</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

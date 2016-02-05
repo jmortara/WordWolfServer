@@ -229,25 +229,34 @@ class ClientHandlerTest extends Thread
 	{
     	log.info("wwss handleConnectToDatabaseRequest");
     	
-    	String responseMsg;
-    	SimpleMessage responseObj;
+//    	String responseMsg;
+    	ConnectToDatabaseResponse response;
     	
-    	// attempt the login
-		Boolean dbConnectionSucceeded = MySQLAccessTester.testConnection();
+    	// attempt to connect to the database
+//    	Boolean dbConnectionSucceeded = MySQLAccessTester.testConnection();
+    	Boolean dbConnectionSucceeded = false;
+		try
+		{
+			dbConnectionSucceeded = dataAccessObj.connectToDataBase();
+		} 
+		catch (Exception e1)
+		{
+			e1.printStackTrace();
+		}
 
 		// send the connection test response
-		if(dbConnectionSucceeded)
+		/*if(dbConnectionSucceeded)
 		{
 			responseMsg = "Database Connection Succeeded.";
 		}
 		else
 		{
 			responseMsg = "Database Connection FAILED.";
-		}
-		responseObj = new SimpleMessage(responseMsg, false);
+		}*/
+		response = new ConnectToDatabaseResponse(dbConnectionSucceeded);
 		try
 		{
-			out.writeObject(responseObj);
+			out.writeObject(response);
 		} 
 		catch (IOException e)
 		{
