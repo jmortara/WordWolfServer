@@ -1,11 +1,13 @@
 import java.io.BufferedReader;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.net.Socket;
+import java.net.SocketException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.logging.Logger;
@@ -173,19 +175,38 @@ class ClientHandlerTest extends Thread
             
         }
        
+        /**
+         * One cause of IOException is disconnects caused by closing the app.
+         */
+        catch(EOFException e)
+        {
+        	//TODO: also close client socket in addition to in/out streams
+        	log.info("wwss EOFException on socket : " + e);
+        	log.info("wwss Client may have disconnected. Closing input and output object streams on this thread...");
+        	try
+        	{
+        		out.close();
+        		in.close();
+        	}
+        	catch(IOException e1)
+        	{
+            	log.warning("wwss IOException while closing object streams: " + e1);
+        		e1.printStackTrace();
+        	}
+        }
         catch (IOException e)
         {
-        	log.info("wwss IOException on socket : " + e);
+        	log.warning("wwss IOException on socket : " + e);
         	e.printStackTrace();
         }
         catch (ClassNotFoundException e)
         {
-            log.info("wwss ClassNotFoundException on socket : " + e);
+            log.warning("wwss ClassNotFoundException on socket : " + e);
             e.printStackTrace();
         } 
         catch (SQLException e)
 		{
-            log.info("wwss SQLException on socket : " + e);
+            log.warning("wwss SQLException on socket : " + e);
 			e.printStackTrace();
 		}
     }
@@ -413,6 +434,20 @@ class ClientHandlerTest extends Thread
 		}
 		catch(Exception e)
 		{
+			if(e instanceof SocketException)
+			{
+				log.warning("wwss handleSelectOpponentRequest: SocketException. Destination player for opponent request may have disconnected. " + request);
+				SelectOpponentResponse response = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName());
+				try
+				{
+					out.writeObject(response);
+				} 
+				catch (IOException e1)
+				{
+					log.warning("wwss handleSelectOpponentRequest: error writing response object: " + response);
+					e1.printStackTrace();
+				}
+			}
 			e.printStackTrace();
 		}
 	}

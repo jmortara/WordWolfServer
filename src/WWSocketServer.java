@@ -21,18 +21,6 @@ public class WWSocketServer
     public static Logger log;
     private static SimpleFormatter logFormatter;
     
-    //message prefixes
-//    public static final String ECHO						= "/echo:";
-//    public static final String SET_USERNAME				= "/setUsername:";
-//    public static final String GET_USERNAME				= "/getUsername";
-//    public static final String GET_OPPONENT_USERNAMES	= "/getOpponentUsernames";			// needs no colon or params
-    //public static final String GET_OPPONENT_PORTS			= "/getOpponentPorts";				//TODO // needs no colon or params
-    //public static final String MESSAGE_PLAYER_PORT		= "/messagePlayer_port_";			//TODO // must append colon
-    //public static final String SELECT_OPPONENT_PORT		= "/selectOpponent_port_";			//TODO // must append colon
-//    public static final String SELECT_OPPONENT_USERNAME	= "/selectOpponentUsername:";		// must append colon
-//    public static final String MESSAGE_OPPONENT 		= "/messageOpponent:";
-//	public static final String SEND_NEW_CURRENT_SCORE	= "/sendNewCurrentScore:";
-    
     
 
     public static void main(String args[])

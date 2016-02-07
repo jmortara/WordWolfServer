@@ -240,9 +240,7 @@ public class MySQLAccess
 	public LoginResponse login(LoginRequest request, Boolean close)
 	{
 		System.out.println("MySQLAccess: login: " + request);
-		System.out.println("MySQLAccess: sqlConnection exists? ********************* " + sqlConnection);
-		
-		//TODO: FIX NULL POINTER EXCEPTION SOMEWHERE IN HERE. DEBUG SERVER?
+		System.out.println("MySQLAccess: sqlConnection exists? " + sqlConnection);
 		
 		LoginResponse response = null;
 		String errMsg = null;
