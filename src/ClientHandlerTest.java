@@ -23,12 +23,14 @@ import test.MySQLAccessTester;
  */
 class ClientHandlerTest extends Thread
 {
-	private Logger log;					// reference to WWSocketServer's Log
-    private Socket connection;			// passed from the main WWSocketServer class in this class' constructor
-    private ObjectInputStream in;		// the Object Input Stream  associated with this thread's socket connection
-    private ObjectOutputStream out;		// the Object Output Stream associated with this thread's socket connection
-    private MySQLAccess dataAccessObj;	// the JDBC access object (DAO) instance for this thread
-    private Player player;				// the dedicated Player object on this Thread. Receives commands via run().
+	private Logger log;							// reference to WWSocketServer's Log
+    private Socket connection;					// passed from the main WWSocketServer class in this class' constructor
+    private ObjectInputStream in;				// the Object Input Stream  associated with this thread's socket connection
+    private ObjectOutputStream out;				// the Object Output Stream associated with this thread's socket connection
+    private MySQLAccess dataAccessObj;			// the JDBC access object (DAO) instance for this thread
+    private Player player;						// the dedicated Player object on this Thread. Receives commands via run().
+    private GameBoardBuilder gameBoardBuilder;	// the GameBoardBuilder for this thread
+    private GameBoard gameBoard;				// the data for the game's board-- its rows, cols, and letters
     
     
     /**
@@ -470,6 +472,7 @@ class ClientHandlerTest extends Thread
 				if(response.getRequestAccepted())
 				{
 					matchPlayers(sourcePlayer, destinationPlayer);
+					setupGame();
 				}
 			}
 			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
@@ -664,6 +667,20 @@ class ClientHandlerTest extends Thread
 			e.printStackTrace();
 		}
 		return false;
+	}
+	
+	private void setupGame()
+	{
+		log.info("wwss ClientHandlerTest: setupGame");
+		if(player == null || player.getOpponent() == null)
+		{
+			log.warning("wwss ClientHandlerTest: setupGame: player or opponent is null... aborting setupGame");
+			return;
+		}
+		
+		log.info("wwss ClientHandlerTest: setupGame between " + player.getUsername() + " and " + player.getOpponent().getUsername());
+		gameBoardBuilder = new GameBoardBuilder();
+		gameBoard = gameBoardBuilder.getNewGameBoard(-1, 5, 5, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make rows, cols, charset dynamic
 	}
 	
 	public void logMsg(String msg)
