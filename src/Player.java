@@ -163,6 +163,20 @@ public class Player
 			e.printStackTrace();
 		}
 	}
+	
+	public void handleCreateGameResponse(CreateGameResponse response)
+	{
+		log.info("handleCreateGameResponse: " + response);
+		
+		try
+		{
+			out.writeObject(response);
+		} 
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
 
 
 	@Override

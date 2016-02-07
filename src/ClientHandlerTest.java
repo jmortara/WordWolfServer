@@ -472,7 +472,6 @@ class ClientHandlerTest extends Thread
 				if(response.getRequestAccepted())
 				{
 					matchPlayers(sourcePlayer, destinationPlayer);
-					setupGame();
 				}
 			}
 			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
@@ -537,7 +536,8 @@ class ClientHandlerTest extends Thread
 	
 	private void handleCreateGameRequest(CreateGameRequest request, ObjectOutputStream out)
 	{
-    	log.info("wwss handleLoginRequest: [PLACEHOLDER FUNCTIONALITY]" + request);
+    	log.info("wwss handleCreateGameRequest: " + request);
+    	setupGame(request.getBoardRows(), request.getBoardCols());
 	}
 	
 	/**
@@ -669,7 +669,12 @@ class ClientHandlerTest extends Thread
 		return false;
 	}
 	
-	private void setupGame()
+	/**
+	 * Set up a new GameBoard and forward it to the each player's client in that game.
+	 * @param requestedRows
+	 * @param requestedCols
+	 */
+	private void setupGame(int requestedRows, int requestedCols)
 	{
 		log.info("wwss ClientHandlerTest: setupGame");
 		if(player == null || player.getOpponent() == null)
@@ -680,7 +685,25 @@ class ClientHandlerTest extends Thread
 		
 		log.info("wwss ClientHandlerTest: setupGame between " + player.getUsername() + " and " + player.getOpponent().getUsername());
 		gameBoardBuilder = new GameBoardBuilder();
-		gameBoard = gameBoardBuilder.getNewGameBoard(-1, 5, 5, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make rows, cols, charset dynamic
+		gameBoard = gameBoardBuilder.getNewGameBoard(-1, requestedRows, requestedCols, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make charset dynamic?
+		
+		CreateGameResponse response = new CreateGameResponse(
+				1, 
+				player.getUsername(), 
+				"defaultGameType", 
+				gameBoard.getRows(), 
+				gameBoard.getCols(), 
+				1, 
+				1,
+				player.getOpponent().getUsername(), 
+				0, 
+				0, 
+				null, null, 
+				gameBoard, 
+				null);
+		
+		player.handleCreateGameResponse(response);
+		player.getOpponent().handleCreateGameResponse(response);
 	}
 	
 	public void logMsg(String msg)
