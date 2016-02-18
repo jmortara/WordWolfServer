@@ -16,7 +16,7 @@ import com.mortaramultimedia.wordwolf.shared.messages.*;
  * Client Handler Thread
  * @author jason mortara
  */
-class ClientHandler extends Thread
+class ClientHandler_OLD extends Thread
 {
 	private Logger log;			// reference to WWSocketServer's Log
     private Socket connection;	// passed from the main WWSocketServer class in this class' constructor
@@ -27,7 +27,7 @@ class ClientHandler extends Thread
      * ClientHandler constructor
      * @param connection 
      */
-    ClientHandler(Socket connection)
+    ClientHandler_OLD(Socket connection)
     {
     	log = WWSocketServer.log;
     	log.info( "wwss ClientHandler constructor." );
