@@ -72,7 +72,7 @@ public class WWSocketServer
                 echo("main: Connection received from " + conn.getInetAddress().getHostName() + " : " + conn.getPort());
                  
                 //create new thread to handle client
-                new ClientHandlerTest(conn).start();
+                new ClientHandler(conn).start();
             }
         }
          

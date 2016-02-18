@@ -21,7 +21,7 @@ import test.MySQLAccessTester;
  * Client Handler Thread
  * @author jason mortara
  */
-class ClientHandlerTest extends Thread
+class ClientHandler extends Thread
 {
 	private Logger log;							// reference to WWSocketServer's Log
     private Socket connection;					// passed from the main WWSocketServer class in this class' constructor
@@ -34,13 +34,13 @@ class ClientHandlerTest extends Thread
     
     
     /**
-     * ClientHandlerTest constructor
+     * ClientHandler constructor
      * @param connection 
      */
-    ClientHandlerTest(Socket connection)
+    ClientHandler(Socket connection)
     {
     	log = WWSocketServer.log;
-    	log.info( "wwss ClientHandlerTest constructor." );
+    	log.info( "wwss ClientHandler constructor." );
         this.connection = connection;
         
         initObjectStreams();
@@ -676,14 +676,14 @@ class ClientHandlerTest extends Thread
 	 */
 	private void setupGame(int requestedRows, int requestedCols)
 	{
-		log.info("wwss ClientHandlerTest: setupGame");
+		log.info("wwss ClientHandler: setupGame");
 		if(player == null || player.getOpponent() == null)
 		{
-			log.warning("wwss ClientHandlerTest: setupGame: player or opponent is null... aborting setupGame");
+			log.warning("wwss ClientHandler: setupGame: player or opponent is null... aborting setupGame");
 			return;
 		}
 		
-		log.info("wwss ClientHandlerTest: setupGame between " + player.getUsername() + " and " + player.getOpponent().getUsername());
+		log.info("wwss ClientHandler: setupGame between " + player.getUsername() + " and " + player.getOpponent().getUsername());
 		gameBoardBuilder = new GameBoardBuilder();
 		gameBoard = gameBoardBuilder.getNewGameBoard(-1, requestedRows, requestedCols, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make charset dynamic?
 		
@@ -708,6 +708,6 @@ class ClientHandlerTest extends Thread
 	
 	public void logMsg(String msg)
 	{
-		log.info("wwss ClientHandlerTest " + connection.getPort() + " " + msg);
+		log.info("wwss ClientHandler " + connection.getPort() + " " + msg);
 	}
-}// end class ClientHandlerTest
+}// end class ClientHandler
