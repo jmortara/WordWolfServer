@@ -1,6 +1,9 @@
+package test;
 
 
 import com.mortaramultimedia.wordwolf.shared.messages.GameBoard;
+
+import game.GameBoardBuilder;
 
 public class TestGameBoardBuilder
 {

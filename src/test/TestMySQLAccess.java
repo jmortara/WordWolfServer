@@ -9,7 +9,7 @@ import com.mortaramultimedia.wordwolf.shared.messages.LoginResponse;
 import database.MySQLAccess;
 
 
-public class MySQLAccessTester
+public class TestMySQLAccess
 {
 	private static final String TAG = "MySQLAccessTester";
 

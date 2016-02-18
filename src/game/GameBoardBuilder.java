@@ -1,3 +1,4 @@
+package game;
 
 
 import java.util.ArrayList;
@@ -6,6 +7,8 @@ import java.util.logging.Logger;
 
 import com.mortaramultimedia.wordwolf.shared.messages.GameBoard;
 import com.mortaramultimedia.wordwolf.shared.messages.TileData;
+
+import core.WWSocketServer;
 
 /**
  * GameBoardBuilder - builds a GameBoard data object for distribution to each player in a 2-player game.

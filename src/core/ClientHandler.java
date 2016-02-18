@@ -1,3 +1,4 @@
+package core;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -13,8 +14,12 @@ import java.util.ArrayList;
 import java.util.logging.Logger;
 import com.mortaramultimedia.wordwolf.shared.constants.*;
 import com.mortaramultimedia.wordwolf.shared.messages.*;
+
+import data.Model;
+import data.Player;
 import database.*;
-import test.MySQLAccessTester;
+import game.GameBoardBuilder;
+import test.TestMySQLAccess;
 
 
 /**
@@ -92,7 +97,7 @@ class ClientHandler extends Thread
     private void testDBConnection()
     {
     	log.info( "wwss testDBConnection: testing DB... [DEPRECATED]" );
-    	MySQLAccessTester.testConnection();
+    	TestMySQLAccess.testConnection();
     }
     
 	public void run()

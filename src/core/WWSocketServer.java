@@ -1,3 +1,4 @@
+package core;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
@@ -6,6 +7,9 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import com.mortaramultimedia.wordwolf.shared.constants.*;
 import com.mortaramultimedia.wordwolf.shared.messages.*;
+
+import constants.Consts;
+import data.Model;
 
 /**
  * Word Wolf Server - meant for remote deployment.
@@ -28,6 +32,7 @@ public class WWSocketServer
     	// set up logging
         try
         {
+        	System.out.print(Consts.STARTUP_MESSAGE);
         	System.out.println("wwss main: setting up logging");
         	log = Logger.getLogger("ServerLog");
             logFileHandler = new FileHandler("serverlog.log");
@@ -45,7 +50,7 @@ public class WWSocketServer
         	ioe.printStackTrace();
         }
         log.info("wwss First log message");
-        log.info("wwss Server version: " + Model.VERSION);
+        log.info("wwss Server version: " + Consts.VERSION);
 
         Model.init();
         
@@ -55,10 +60,10 @@ public class WWSocketServer
         
         try
         {
-        	log.info("wwss main: attempting to create a ServerSocket on port: " + Model.PORT);
+        	log.info("wwss main: attempting to create a ServerSocket on port: " + Consts.PORT);
         	
             //1. creating a server socket - 1st parameter is port number and 2nd is the backlog
-            s = new ServerSocket(Model.PORT, Model.MAX_BACKLOG_CONNECTIONS);
+            s = new ServerSocket(Consts.PORT, Consts.MAX_BACKLOG_CONNECTIONS);
              
             //2. Wait for an incoming connection
             echo("main: Server socket created. Waiting for connection...");
