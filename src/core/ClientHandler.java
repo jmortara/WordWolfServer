@@ -692,6 +692,9 @@ class ClientHandler extends Thread
 		gameBoardBuilder = new GameBoardBuilder();
 		gameBoard = gameBoardBuilder.getNewGameBoard(-1, requestedRows, requestedCols, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make charset dynamic?
 		
+		log.info("wwss ClientHandler: setupGame: gameBoard created:");
+		gameBoard.printBoardData();
+
 		CreateGameResponse response = new CreateGameResponse(
 				1, 
 				player.getUsername(), 
