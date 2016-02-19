@@ -2,6 +2,7 @@ package core;
 import java.io.*;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -54,6 +55,8 @@ public class WWSocketServer
 
         Model.init();
         
+        initDictionary();
+        
         // socket setup
         s = null;
         conn = null;
@@ -97,7 +100,69 @@ public class WWSocketServer
             System.err.println("wwss Unable to close. IOexception");
         }
     }
-     
+    
+    private static void initDictionary()
+    {
+		System.out.println("wwss main: loadDictionary");
+    	if(Model.getGlobalDictionary() == null)
+    	{
+    		populateDictionary();
+    	}
+    }
+    
+    /**
+     * Get the result of the loaded external dictionary and put it into the Model for global access.
+     */
+	private static void populateDictionary()
+	{
+		System.out.println("wwss main: populateDictionary");
+
+		HashMap<String, String> dict = new HashMap<String, String>();
+		dict = loadDictionary();
+		Model.setGlobalDictionary(dict);
+		System.out.println("populateDictionary: globalDictionary length after load:  " + Model.getGlobalDictionary().size() );
+	}
+
+	/**
+	 * Load the dictionary of allowable words for the game from an external file and return it as a HashMap.
+	 * @return
+	 */
+	private static HashMap<String, String> loadDictionary()
+	{
+		System.out.println("wwss main: loadDictionary");
+
+		HashMap<String, String> myDict = new HashMap<String, String>();
+//		AssetManager assetManager = context.getAssets();
+		String line;
+		int currentLine = 0;
+		int lastLineToPrint = 10;
+		try {
+			File file = new File("assets/dictionary_GIANT.txt");
+			FileInputStream ims = new FileInputStream(file);
+			BufferedReader r = new BufferedReader(new InputStreamReader(ims));
+			try {
+				while ((line=r.readLine()) != null) 
+				{
+					myDict.put(line, line);
+					if ( currentLine <= lastLineToPrint)
+					{
+						System.out.println("read dictionary line: " + line);
+					}
+					currentLine++;
+				}
+				System.out.println("...");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return myDict;
+	}
+    
+    
     public static void echo(String msg)
     {
         System.out.println("wwss main: " + msg);
