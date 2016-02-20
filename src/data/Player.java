@@ -11,7 +11,7 @@ import com.mortaramultimedia.wordwolf.shared.messages.*;
 
 
 /**
- * The server-side Player object.
+ * The server-side Player object....
  * @author jason
  *
  */
