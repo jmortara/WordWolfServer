@@ -11,7 +11,7 @@ import com.mortaramultimedia.wordwolf.shared.messages.*;
 
 
 /**
- * The server-side Player object....
+ * The server-side Player object.
  * @author jason
  *
  */
@@ -25,6 +25,7 @@ public class Player
 	private Player opponent;
 	private String username;
 	private String state;
+	private int score = 0;
 	
 
 	/**
@@ -53,43 +54,36 @@ public class Player
 		return state;
 	}
 	
-	
 	public void setState(String state)
 	{
 		this.state = state;
 		log.info( "Player state updated: " + this.port + ", " + this.username + ", " + this.state);
 	}
 	
-	
 	public Socket getConn()
 	{
 		return conn;
 	}
-
 
 	public void setConn(Socket conn)
 	{
 		this.conn = conn;
 	}
 
-
 	public int getPort()
 	{
 		return port;
 	}
-
 
 	public void setPort(int port)
 	{
 		this.port = port;
 	}
 
-
 	public Player getOpponent()
 	{
 		return opponent;
 	}
-
 
 	public void setOpponent(Player opponent)
 	{
@@ -97,18 +91,29 @@ public class Player
 	 	log.info( "setOpponent: opponent Player selected on port: " + this.opponent.getPort() );
 	}
 
-
 	public String getUsername()
 	{
 		return username;
 	}
-
 
 	public void setUsername(String username)
 	{
 		this.username = username;
 	}
 	
+	public int getScore()
+	{
+		return score;
+	}
+
+	public void setScore(int score)
+	{
+		this.score = score;
+	}
+
+
+	/////////////////////////////////////////
+	// I/O to/from streams
 	public void handleSimpleMessage(SimpleMessage msg)
 	{
 		log.info("handleSimpleMessage: " + msg);

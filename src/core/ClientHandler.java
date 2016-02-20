@@ -13,8 +13,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 import com.mortaramultimedia.wordwolf.shared.constants.*;
+import com.mortaramultimedia.wordwolf.shared.game.Validator;
 import com.mortaramultimedia.wordwolf.shared.messages.*;
+import com.sun.xml.internal.ws.developer.MemberSubmissionAddressing.Validation;
 
+import constants.Errors;
 import data.Model;
 import data.Player;
 import database.*;
@@ -175,6 +178,13 @@ class ClientHandler extends Thread
             	else if(obj instanceof CreateGameRequest)
             	{
             		handleCreateGameRequest(((CreateGameRequest) obj), out);
+            	}
+            	/**
+            	 * If receiving a GameMoveRequest, check its GameMove for validity, process the move, and respond with points awarded.
+            	 */
+            	else if(obj instanceof GameMoveRequest)
+            	{
+            		handleGameMoveRequest(((GameMoveRequest) obj), out);
             	}
             	
             	out.flush();
@@ -541,8 +551,47 @@ class ClientHandler extends Thread
 	
 	private void handleCreateGameRequest(CreateGameRequest request, ObjectOutputStream out)
 	{
-    	log.info("wwss handleCreateGameRequest: " + request);
-    	setupGame(request.getBoardRows(), request.getBoardCols());
+		log.info("wwss handleCreateGameRequest: " + request);
+		setupGame(request.getBoardRows(), request.getBoardCols());
+	}
+	
+	private void handleGameMoveRequest(GameMoveRequest request, ObjectOutputStream out)
+	{
+    	log.info("wwss handleGameMoveRequest: " + request);
+    	int pointsAwarded = 0;
+    	GameMoveResponse response = null;
+    	if(gameBoard != null)
+    	{
+    		Boolean moveIsValid = Validator.validateMove(gameBoard, request.getGameMove());
+    		if(moveIsValid)
+    		{
+    			pointsAwarded = calculateScoreFromMove(request.getGameMove());
+        		if(player != null)
+        		{
+        			player.setScore(player.getPort() + pointsAwarded);
+        			response = new GameMoveResponse(player.getUsername(), -1, true, true, pointsAwarded, null);
+        		}
+    		}
+    		else
+    		{
+    			log.warning("wwss handleGameMoveRequest: move has not passed validation. Not calculating a score for it.");
+    			response = new GameMoveResponse(player.getUsername(), -1, true, false, 0, Errors.GAME_MOVE_INVALID);
+    		}
+    	}
+    	else
+    	{
+    		log.warning("wwss handleGameMoveRequest: no gameBoard exists, so cannot process move. Ignoring.");
+			response = new GameMoveResponse(player.getUsername(), -1, false, false, 0, Errors.GAME_BOARD_IS_NULL);
+    	}
+    	
+    	try
+		{
+			out.writeObject(response);
+		} 
+    	catch (IOException e)
+		{
+			e.printStackTrace();
+		}
 	}
 	
 	/**
@@ -712,6 +761,23 @@ class ClientHandler extends Thread
 		
 		player.handleCreateGameResponse(response);
 		player.getOpponent().handleCreateGameResponse(response);
+	}
+	
+	/**
+	 * Calculate a score for the move. For now, keep it simple: score = number of letters (tiles).
+	 * @param gameMove
+	 * @return
+	 */
+	private int calculateScoreFromMove(GameMove gameMove)
+	{
+		int moveScore = 0;
+		int numTiles = 0;
+		if(gameMove.getMove().size() > 0)
+		{
+			numTiles = gameMove.getMove().size();
+		}
+		moveScore = numTiles;
+		return moveScore;
 	}
 	
 	public void logMsg(String msg)
