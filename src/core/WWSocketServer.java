@@ -1,13 +1,9 @@
 package core;
+
 import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.FileHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-import com.mortaramultimedia.wordwolf.shared.constants.*;
-import com.mortaramultimedia.wordwolf.shared.messages.*;
+import java.util.logging.*;
 
 import constants.Consts;
 import data.Model;
@@ -24,7 +20,7 @@ public class WWSocketServer
     
     private static FileHandler logFileHandler;
     public static Logger log;
-    private static SimpleFormatter logFormatter;
+    private static SimpleFormatter logFormatter;	// see JDK_HOME/jre/lib/logging.properties
     
     
 
@@ -33,11 +29,16 @@ public class WWSocketServer
     	// set up logging
         try
         {
+        	System.out.println();
         	System.out.print(Consts.STARTUP_MESSAGE);
         	System.out.println("wwss main: setting up logging");
         	log = Logger.getLogger("ServerLog");
             logFileHandler = new FileHandler("serverlog.log");
             log.addHandler( logFileHandler );
+            /*for(Handler iHandler:log.getParent().getHandlers())
+            {
+            	log.getParent().removeHandler(iHandler);		// removes the timestamp lines from the log, reducing output, but also removes some needed logging
+            }*/
             logFormatter = new SimpleFormatter();
             logFileHandler.setFormatter( logFormatter );
             log.info("wwss Log Start ---------------------------------- ");

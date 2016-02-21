@@ -9,6 +9,8 @@ import java.util.logging.Logger;
 import com.mortaramultimedia.wordwolf.shared.constants.*;
 import com.mortaramultimedia.wordwolf.shared.messages.*;
 
+import core.WWSocketServer;
+
 
 /**
  * The server-side Player object.
@@ -25,6 +27,7 @@ public class Player
 	private Player opponent;
 	private String username;
 	private String state;
+	private GameBoard gameBoard;
 	private int score = 0;
 	
 
@@ -39,10 +42,11 @@ public class Player
 		this.out  = out;
 		this.port = this.conn.getPort();
 		
-		log = Logger.getLogger( "Player " + this.port );
+		//log = Logger.getLogger( "Player " + this.port );
+		log = WWSocketServer.log;
 		log.info( "Player constructor on port: " + this.port );
 		
-		setState(Constants.PLAYER_STATE_NEW);
+		setState(PlayerState.INIT);
 	}
 
 	
@@ -60,6 +64,17 @@ public class Player
 		log.info( "Player state updated: " + this.port + ", " + this.username + ", " + this.state);
 	}
 	
+	public GameBoard getGameBoard()
+	{
+		return gameBoard;
+	}
+
+
+	public void setGameBoard(GameBoard gameBoard)
+	{
+		this.gameBoard = gameBoard;
+	}
+
 	public Socket getConn()
 	{
 		return conn;

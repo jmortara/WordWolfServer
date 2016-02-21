@@ -38,7 +38,7 @@ class ClientHandler extends Thread
     private MySQLAccess dataAccessObj;			// the JDBC access object (DAO) instance for this thread
     private Player player;						// the dedicated Player object on this Thread. Receives commands via run().
     private GameBoardBuilder gameBoardBuilder;	// the GameBoardBuilder for this thread
-    private GameBoard gameBoard;				// the data for the game's board-- its rows, cols, and letters
+    //private GameBoard gameBoard;				// the data for the game's board-- its rows, cols, and letters (moved to Player)
     
     
     /**
@@ -185,6 +185,13 @@ class ClientHandler extends Thread
             	else if(obj instanceof GameMoveRequest)
             	{
             		handleGameMoveRequest(((GameMoveRequest) obj), out);
+            	}
+            	/**
+            	 * If receiving a EndGameRequest, complete any game-over wrapup on the server side, and confirm with the client.
+            	 */
+            	else if(obj instanceof EndGameRequest)
+            	{
+            		handleEndGameRequest(((EndGameRequest) obj), out);
             	}
             	
             	out.flush();
@@ -438,6 +445,7 @@ class ClientHandler extends Thread
 		// source user initiates the request to the destination user
 		String sourceUsername = request.getSourceUsername();
 		Player sourcePlayer = getPlayerByUsername(sourceUsername);
+		sourcePlayer.setState(PlayerState.REQUESTED_OPPONENT);
 		
 		try
 		{
@@ -445,6 +453,7 @@ class ClientHandler extends Thread
 			Player destinationPlayer = getPlayerByUsername(destinationUsername);
 			if(destinationPlayer != null)
 			{
+				destinationPlayer.setState(PlayerState.RECEIVED_OPPONENT_REQUEST);
 				destinationPlayer.handleSelectOpponentRequest(request);
 			}
 			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
@@ -486,7 +495,13 @@ class ClientHandler extends Thread
 				destinationPlayer.handleSelectOpponentResponse(response);
 				if(response.getRequestAccepted())
 				{
+					sourcePlayer.setState(PlayerState.ACCEPTED_OPPONENT);
 					matchPlayers(sourcePlayer, destinationPlayer);
+				}
+				else
+				{
+					sourcePlayer.setState(PlayerState.IDLE);
+					destinationPlayer.setState(PlayerState.IDLE);
 				}
 			}
 			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
@@ -560,9 +575,9 @@ class ClientHandler extends Thread
     	log.info("wwss handleGameMoveRequest: " + request);
     	int pointsAwarded = 0;
     	GameMoveResponse response = null;
-    	if(gameBoard != null)
+    	if(player.getGameBoard() != null)
     	{
-    		Boolean moveIsValid = Validator.validateMove(gameBoard, request.getGameMove());
+    		Boolean moveIsValid = Validator.validateMove(player.getGameBoard(), request.getGameMove());
     		if(moveIsValid)
     		{
     			pointsAwarded = calculateScoreFromMove(request.getGameMove());
@@ -589,6 +604,38 @@ class ClientHandler extends Thread
 			out.writeObject(response);
 		} 
     	catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	private void handleEndGameRequest(EndGameRequest request, ObjectOutputStream out)
+	{
+    	log.info("wwss handleEndGameRequest: " + request);
+    	
+    	//TODO: wrap up on the server side before sending the confirmation response
+    	
+    	log.info("wwss handleEndGameRequest: sending EndGameResponse to player: " + player.getUsername());
+    	player.setState(PlayerState.GAME_ENDED);
+    	EndGameResponse playerResponse = new EndGameResponse(player.getUsername(), -1, true, player.getScore(), null);
+    	try
+		{
+			out.writeObject(playerResponse);
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+    	
+    	//TODO: note that the opponent response here is not generated from a request from that opponent
+    	log.info("wwss handleEndGameRequest: sending EndGameResponse to opponent: " + player.getOpponent().getUsername());
+    	player.getOpponent().setState(PlayerState.GAME_ENDED);
+    	EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), null);
+    	try
+		{
+			out.writeObject(opponentResponse);
+		}
+		catch (IOException e)
 		{
 			e.printStackTrace();
 		}
@@ -640,6 +687,7 @@ class ClientHandler extends Thread
 			if(null == player)
 			{
 				player = p;
+				player.setState(PlayerState.IDLE);
 				logMsg("wwss attachPlayer: attached Player to this thread: " + player.getUsername());
 			}
 		}
@@ -709,11 +757,14 @@ class ClientHandler extends Thread
 		{
 			log.info("wwss matchPlayers: matching these two players as opponents: " + player1.getUsername() + ", " + player2.getUsername());
 			player1.setOpponent(player2);
+			player1.setState(PlayerState.READY_FOR_GAME_START);
 			player2.setOpponent(player1);
+			player2.setState(PlayerState.READY_FOR_GAME_START);
 			log.info("wwss matchPlayers: match successful.");
-			SimpleMessage confirmationMsg = new SimpleMessage("You are confirmed to have an opponent!");
-			player1.handleSimpleMessage(confirmationMsg);
-			player2.handleSimpleMessage(confirmationMsg);
+			SimpleMessage player1ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player2.getUsername());
+			SimpleMessage player2ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player1.getUsername());
+			player1.handleSimpleMessage(player1ConfirmationMsg);
+			player2.handleSimpleMessage(player2ConfirmationMsg);
 			return true;
 		}
 		catch(Exception e)
@@ -724,7 +775,7 @@ class ClientHandler extends Thread
 	}
 	
 	/**
-	 * Set up a new GameBoard and forward it to the each player's client in that game.
+	 * Set up a new GameBoard and assign it to player/opponent on the server side, and forward it to the each player's client in that game.
 	 * @param requestedRows
 	 * @param requestedCols
 	 */
@@ -739,27 +790,35 @@ class ClientHandler extends Thread
 		
 		log.info("wwss ClientHandler: setupGame between " + player.getUsername() + " and " + player.getOpponent().getUsername());
 		gameBoardBuilder = new GameBoardBuilder();
-		gameBoard = gameBoardBuilder.getNewGameBoard(-1, requestedRows, requestedCols, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make charset dynamic?
+		GameBoard gameBoard = gameBoardBuilder.getNewGameBoard(-1, requestedRows, requestedCols, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make charset dynamic?
+		player.setGameBoard(gameBoard);
+		player.getOpponent().setGameBoard(gameBoard);
 		
 		log.info("wwss ClientHandler: setupGame: gameBoard created:");
-		gameBoard.printBoardData();
+		player.getGameBoard().printBoardData();
 
-		CreateGameResponse response = new CreateGameResponse(
+		CreateGameResponse response = new CreateGameResponse
+			(
 				1, 
 				player.getUsername(), 
 				"defaultGameType", 
-				gameBoard.getRows(), 
-				gameBoard.getCols(), 
+				player.getGameBoard().getRows(), 
+				player.getGameBoard().getCols(), 
 				1, 
 				1,
 				player.getOpponent().getUsername(), 
 				0, 
 				0, 
 				null, null, 
-				gameBoard, 
-				null);
+				player.getGameBoard(), 
+				30000, 
+				null
+			);
 		
+		player.setState(PlayerState.PLAYING_GAME);
 		player.handleCreateGameResponse(response);
+
+		player.getOpponent().setState(PlayerState.PLAYING_GAME);
 		player.getOpponent().handleCreateGameResponse(response);
 	}
 	
