@@ -200,11 +200,65 @@ public class Player
 		}
 	}
 
+	//////////////////////////
+	// Object overrides
 
 	@Override
 	public String toString()
 	{
 		return "Player [port=" + port + ", username=" + username + ", state=" + state + "]";
+	}
+
+
+	@Override
+	public int hashCode()
+	{
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((opponent == null) ? 0 : opponent.hashCode());
+		result = prime * result + port;
+		result = prime * result + score;
+		result = prime * result + ((state == null) ? 0 : state.hashCode());
+		result = prime * result
+				+ ((username == null) ? 0 : username.hashCode());
+		return result;
+	}
+
+
+	@Override
+	public boolean equals(Object obj)
+	{
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Player other = (Player) obj;
+		if (opponent == null)
+		{
+			if (other.opponent != null)
+				return false;
+		} else if (!opponent.equals(other.opponent))
+			return false;
+		if (port != other.port)
+			return false;
+		if (score != other.score)
+			return false;
+		if (state == null)
+		{
+			if (other.state != null)
+				return false;
+		} else if (!state.equals(other.state))
+			return false;
+		if (username == null)
+		{
+			if (other.username != null)
+				return false;
+		} else if (!username.equals(other.username))
+			return false;
+		return true;
 	}
 	
 }

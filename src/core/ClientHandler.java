@@ -371,13 +371,14 @@ class ClientHandler extends Thread
 	{
     	log.info("wwss handleGetPlayerListRequest: " + request.getRequestType());
 
+    	String requestType = request.getRequestType();
     	String foundUsername = null;
     	ArrayList<String> list = new ArrayList<String>();
     	GetPlayerListResponse response = null;
     	
-    	switch(request.getRequestType())
+    	switch(requestType)
 		{
-			case GetPlayerListRequest.REQUEST_TYPE_THIS_PLAYER:
+			case PlayerListType.THIS_PLAYER:
 				if(this.player != null)
 				{
 					foundUsername = this.player.getUsername();
@@ -388,10 +389,22 @@ class ClientHandler extends Thread
 				}
 				break;
 			
-			case GetPlayerListRequest.REQUEST_TYPE_OPPONENT:
+			case PlayerListType.OPPONENT:
 				if(this.player != null)
 				{
-					foundUsername= this.player.getOpponent().getUsername();
+					foundUsername = this.player.getOpponent().getUsername();
+					if(foundUsername != null)
+					{
+						list.add(foundUsername);
+					}
+				}
+				break;
+				
+			case PlayerListType.SPECIFIC_PLAYER_BY_USERNAME:
+				if(Model.players != null && request.getRequestedUsername() != null)
+				{
+					Player requestedPlayer = getPlayerByUsername(request.getRequestedUsername());
+					foundUsername = requestedPlayer.getUsername();
 					if(foundUsername != null)
 					{
 						list.add(foundUsername);
@@ -399,34 +412,55 @@ class ClientHandler extends Thread
 				}
 				break;
 
-			case GetPlayerListRequest.REQUEST_TYPE_ALL_PLAYERS:
+			case PlayerListType.ALL_PLAYERS:
 				if(Model.players != null)
 				{
-					for(Player player : Model.players)
+					for(Player playerInList : Model.players)
 					{
-						list.add(player.getUsername());
+						if(playerInList != this.player)
+						{
+							list.add(playerInList.getUsername());
+						}
 					}
 				}
 				break;
 
-			case GetPlayerListRequest.RESPONSE_TYPE_ALL_ACTIVE_PLAYERS:
+			case PlayerListType.ALL_ACTIVE_PLAYERS:
 				if(Model.players != null)
 				{
-					for(Player player : Model.players)
+					for(Player playerInList : Model.players)
 					{
-						//TODO: BEHAVIOR TBD
+						list.add(playerInList.getUsername());
+					}
+				}
+				break;
+				
+			
+			case PlayerListType.ALL_UNMATCHED_PLAYERS:
+				if(Model.players != null)
+				{
+					for(Player playerInList : Model.players)
+					{
+						if(!playerInList.equals(this.player))
+						{
+							if(playerInList.getOpponent() == null)	//TODO - add a condition for PLAYER_STATE_IDLE etc
+							{
+								list.add(playerInList.getUsername());
+							}
+						}
 					}
 				}
 				break;
 				
 			default:
+		    	log.warning("wwss handleGetPlayerListResponse: WARNING: UNHANDLED LIST TYPE REQUESTED: " + requestType);
 				// do nothing; empty list
 				break;
 		}
     	
     	log.info("wwss handleGetPlayerListResponse: got player list: " + list.toString());
     	
-		response = new GetPlayerListResponse(list);
+		response = new GetPlayerListResponse(requestType, list);
     	log.info("wwss handleGetPlayerListResponse: post-serialized player list: " + response.getPlayersCopy());
 		try
 		{
