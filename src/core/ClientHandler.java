@@ -82,6 +82,24 @@ class ClientHandler extends Thread
     }
     
     /**
+     * Send an object to the client by writing it to the output stream.
+     * @param obj
+     */
+    private void sendObject(Object obj)
+    {
+    	log.info( "wwss sendObject: " + obj );
+		try
+		{
+			out.writeObject(obj);
+		} 
+		catch (IOException e)
+		{
+			log.warning("wwss handleSelectOpponentRequest: ERROR writing object: " + obj);
+			e.printStackTrace();
+		}
+    }
+    
+    /**
      * Init the DAO for accessing the database.
      */
     private void initDatabaseAccess()
@@ -209,6 +227,8 @@ class ClientHandler extends Thread
         	log.info("wwss Client may have disconnected. Closing input and output object streams on this thread...");
         	try
         	{
+        		setPlayerStateToDisconnected(this.player);
+        		
         		out.close();
         		in.close();
         	}
@@ -236,6 +256,19 @@ class ClientHandler extends Thread
     }
 	
 	/**
+	 * Shortcut to set the state of any player to disconnectd. 
+	 * @param p
+	 */
+	private void setPlayerStateToDisconnected(Player p)
+	{
+		if(p != null)
+		{
+	        log.warning("wwss setPlayerStateToDisconnected: " + p.getUsername());
+			p.setState(PlayerState.DISCONNECTED);
+		}
+	}
+	
+	/**
 	 * Handler for incoming SimpleMessage objects.
 	 * @param msgObj
 	 * @param out
@@ -255,14 +288,8 @@ class ClientHandler extends Thread
 			// otherwise reply by echoing the received message
 			else appendedMsg = msgObj.getMsg();
 		}
-		try
-		{
-			out.writeObject(new SimpleMessage(("SENDING OBJECT TO CLIENT " + appendedMsg), false));
-		} 
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+		
+		sendObject(new SimpleMessage(appendedMsg, false));
 	}
 
 	/**
@@ -298,15 +325,15 @@ class ClientHandler extends Thread
 		{
 			responseMsg = "Database Connection FAILED.";
 		}*/
-		response = new ConnectToDatabaseResponse(dbConnectionSucceeded);
-		try
+		
+		// note that there is most likely no player created yet, but in case there is, for example on reconnect to db
+		if(dbConnectionSucceeded && this.player != null)
 		{
-			out.writeObject(response);
-		} 
-		catch (IOException e)
-		{
-			e.printStackTrace();
+			this.player.setState(PlayerState.CONNECTED_2);
 		}
+		
+		response = new ConnectToDatabaseResponse(dbConnectionSucceeded);
+		sendObject(response);
 	}
 	
 	/**
@@ -341,7 +368,12 @@ class ClientHandler extends Thread
 		}
 		responseObj = new SimpleMessage(responseMsg, false);*/
 		log.info("wwss handleLoginRequest: response from login attempt: " + loginResponse);
-		out.writeObject(loginResponse);
+		sendObject(loginResponse);
+		if(loginResponse.getLoginAccepted() && this.player != null)
+		{
+			this.player.setState(PlayerState.CONNECTED_3);
+		}
+
 		
 		// create the server-side Player obj
 		Boolean playerCreated = createPlayer(loginResponse);
@@ -356,7 +388,6 @@ class ClientHandler extends Thread
 				{
 					attachPlayer(existingPlayer);
 				}
-				
 			}
 		}
 	}
@@ -372,104 +403,97 @@ class ClientHandler extends Thread
     	log.info("wwss handleGetPlayerListRequest: " + request.getRequestType());
 
     	String requestType = request.getRequestType();
-    	String foundUsername = null;
+    	String requestedUsername = null;
     	ArrayList<String> list = new ArrayList<String>();
     	GetPlayerListResponse response = null;
     	
-    	switch(requestType)
-		{
-			case PlayerListType.THIS_PLAYER:
-				if(this.player != null)
-				{
-					foundUsername = this.player.getUsername();
-					if(foundUsername != null)
+    	//TODO: create a robot player in case no human players are available - would require some AI for gamplay
+    	if(this.player != null)
+    	{
+    		player.setState(PlayerState.GETTING_PLAYER_LIST);
+	    	switch(requestType)
+			{
+				case PlayerListType.THIS_PLAYER:
+					requestedUsername = this.player.getUsername();
+					if(requestedUsername != null)
 					{
-						list.add(foundUsername);
+						list.add(requestedUsername);
 					}
-				}
-				break;
-			
-			case PlayerListType.OPPONENT:
-				if(this.player != null)
-				{
-					foundUsername = this.player.getOpponent().getUsername();
-					if(foundUsername != null)
-					{
-						list.add(foundUsername);
-					}
-				}
-				break;
+					break;
 				
-			case PlayerListType.SPECIFIC_PLAYER_BY_USERNAME:
-				if(Model.players != null && request.getRequestedUsername() != null)
-				{
-					Player requestedPlayer = getPlayerByUsername(request.getRequestedUsername());
-					foundUsername = requestedPlayer.getUsername();
-					if(foundUsername != null)
+				case PlayerListType.OPPONENT:
+					requestedUsername = this.player.getOpponent().getUsername();
+					if(requestedUsername != null)
 					{
-						list.add(foundUsername);
+						list.add(requestedUsername);
 					}
-				}
-				break;
-
-			case PlayerListType.ALL_PLAYERS:
-				if(Model.players != null)
-				{
-					for(Player playerInList : Model.players)
+					break;
+					
+				case PlayerListType.SPECIFIC_PLAYER_BY_USERNAME:
+					if(Model.players != null && request.getRequestedUsername() != null)
 					{
-						if(playerInList != this.player)
+						Player requestedPlayer = getPlayerByUsername(request.getRequestedUsername());
+						requestedUsername = requestedPlayer.getUsername();
+						if(requestedUsername != null)
 						{
-							list.add(playerInList.getUsername());
+							list.add(requestedUsername);
 						}
 					}
-				}
-				break;
-
-			case PlayerListType.ALL_ACTIVE_PLAYERS:
-				if(Model.players != null)
-				{
-					for(Player playerInList : Model.players)
+					break;
+	
+				case PlayerListType.ALL_PLAYERS:
+					if(Model.players != null)
 					{
-						list.add(playerInList.getUsername());
-					}
-				}
-				break;
-				
-			
-			case PlayerListType.ALL_UNMATCHED_PLAYERS:
-				if(Model.players != null)
-				{
-					for(Player playerInList : Model.players)
-					{
-						if(!playerInList.equals(this.player))
+						for(Player playerInList : Model.players)
 						{
-							if(playerInList.getOpponent() == null)	//TODO - add a condition for PLAYER_STATE_IDLE etc
+							if(playerInList != this.player)
 							{
 								list.add(playerInList.getUsername());
 							}
 						}
 					}
-				}
-				break;
+					break;
+	
+				case PlayerListType.ALL_ACTIVE_PLAYERS:
+					if(Model.players != null)
+					{
+						for(Player playerInList : Model.players)
+						{
+							list.add(playerInList.getUsername());
+						}
+					}
+					break;
+					
 				
-			default:
-		    	log.warning("wwss handleGetPlayerListResponse: WARNING: UNHANDLED LIST TYPE REQUESTED: " + requestType);
-				// do nothing; empty list
-				break;
-		}
+				case PlayerListType.ALL_UNMATCHED_PLAYERS:
+					if(Model.players != null)
+					{
+						for(Player playerInList : Model.players)
+						{
+							if(!playerInList.equals(this.player))
+							{
+								if(playerInList.getOpponent() == null)	//TODO - add a condition for PLAYER_STATE_IDLE etc
+								{
+									list.add(playerInList.getUsername());
+								}
+							}
+						}
+					}
+					break;
+					
+				default:
+			    	log.warning("wwss handleGetPlayerListResponse: WARNING: UNHANDLED LIST TYPE REQUESTED: " + requestType);
+					// do nothing; empty list
+					break;
+			}
+    	}
     	
     	log.info("wwss handleGetPlayerListResponse: got player list: " + list.toString());
     	
 		response = new GetPlayerListResponse(requestType, list);
     	log.info("wwss handleGetPlayerListResponse: post-serialized player list: " + response.getPlayersCopy());
-		try
-		{
-			out.writeObject(response);
-		} 
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+		sendObject(response);
+		player.setState(PlayerState.IDLE);
 	}
 	
 	private void handleSelectOpponentRequest(SelectOpponentRequest request, ObjectOutputStream out)
@@ -498,15 +522,7 @@ class ClientHandler extends Thread
 			{
 				log.warning("wwss handleSelectOpponentRequest: SocketException. Destination player for opponent request may have disconnected. " + request);
 				SelectOpponentResponse response = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName());
-				try
-				{
-					out.writeObject(response);
-				} 
-				catch (IOException e1)
-				{
-					log.warning("wwss handleSelectOpponentRequest: error writing response object: " + response);
-					e1.printStackTrace();
-				}
+				sendObject(response);
 			}
 			e.printStackTrace();
 		}
@@ -633,14 +649,7 @@ class ClientHandler extends Thread
 			response = new GameMoveResponse(player.getUsername(), -1, false, false, 0, Errors.GAME_BOARD_IS_NULL);
     	}
     	
-    	try
-		{
-			out.writeObject(response);
-		} 
-    	catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+    	sendObject(response);
 	}
 	
 	private void handleEndGameRequest(EndGameRequest request, ObjectOutputStream out)
@@ -652,27 +661,13 @@ class ClientHandler extends Thread
     	log.info("wwss handleEndGameRequest: sending EndGameResponse to player: " + player.getUsername());
     	player.setState(PlayerState.GAME_ENDED);
     	EndGameResponse playerResponse = new EndGameResponse(player.getUsername(), -1, true, player.getScore(), null);
-    	try
-		{
-			out.writeObject(playerResponse);
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+		sendObject(playerResponse);
     	
     	//TODO: note that the opponent response here is not generated from a request from that opponent
     	log.info("wwss handleEndGameRequest: sending EndGameResponse to opponent: " + player.getOpponent().getUsername());
     	player.getOpponent().setState(PlayerState.GAME_ENDED);
     	EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), null);
-    	try
-		{
-			out.writeObject(opponentResponse);
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+		sendObject(opponentResponse);
 	}
 	
 	/**
@@ -689,8 +684,9 @@ class ClientHandler extends Thread
 			Player player = new Player(this.connection, this.in, this.out);
 			player.setUsername(login.getUserName());
 			
-			if(playerExists(player.getUsername()))
+			if(playerExists(login.getUserName()))
 			{
+				// note - this results in handleLoginRequest reattaching the existing player
 				logMsg(" WARNING: Duplicate Player - ignoring request to add player with same username.");
 				return false;
 			}
@@ -721,7 +717,7 @@ class ClientHandler extends Thread
 			if(null == player)
 			{
 				player = p;
-				player.setState(PlayerState.IDLE);
+				player.setState(PlayerState.CONNECTED_1);
 				logMsg("wwss attachPlayer: attached Player to this thread: " + player.getUsername());
 			}
 		}

@@ -157,7 +157,7 @@ public class Player
 	
 	public void handleSelectOpponentRequest(SelectOpponentRequest request)
 	{
-		log.info("handleSelectOpponentRequest: " + request);
+		log.info("handleSelectOpponentRequest: current state, request: " + state + ", " + request);
 		try
 		{
 			out.writeObject(request);
