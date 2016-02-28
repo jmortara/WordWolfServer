@@ -11,6 +11,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 import com.mortaramultimedia.wordwolf.shared.constants.*;
 import com.mortaramultimedia.wordwolf.shared.game.Validator;
@@ -521,31 +522,45 @@ class ClientHandler extends Thread
 			if(e instanceof SocketException)
 			{
 				log.warning("wwss handleSelectOpponentRequest: SocketException. Destination player for opponent request may have disconnected. " + request);
-				SelectOpponentResponse response = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName());
-				sendObject(response);
+				SelectOpponentResponse playerResponse   = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName());
+				sendObject(playerResponse);
+
+//				SelectOpponentResponse opponentResponse = new SelectOpponentResponse(false, request.getDestinationUserName(), request.getSourceUsername());
+//				sendObject(opponentResponse);
 			}
 			e.printStackTrace();
 		}
 	}
 	
+	/**
+	 * Handle a player's accept or decline of SelectOpponentRequest.
+	 * Send out the related response to both players so that the game can begin for both players, or both should become idle.
+	 * @param response
+	 * @param out
+	 */
 	private void handleSelectOpponentResponse(SelectOpponentResponse response, ObjectOutputStream out)
 	{
 		log.info("wwss handleSelectOpponentResponse: " + response);
 		
-		// source player accepts or rejects the request in this response
+		// source player is the player who accepts or rejects the request they received via this response
 		String sourceUsername = response.getSourceUserName();
 		Player sourcePlayer = getPlayerByUsername(sourceUsername);
+		SelectOpponentResponse sourcePlayerResponse = response;
 		
 		try
 		{
-			String destinationUsername = response.getDestinationUsername();
+			// destination player is the player who originally made the invitation to a potential opponent in the form of a SelectOpponentRequest
+			String destinationUsername = sourcePlayerResponse.getDestinationUsername();
 			Player destinationPlayer = getPlayerByUsername(destinationUsername);
+			SelectOpponentResponse destinationPlayerResponse = new SelectOpponentResponse(response.getRequestAccepted(), response.getDestinationUsername(), response.getSourceUserName());;
 			if(destinationPlayer != null)
 			{
-				destinationPlayer.handleSelectOpponentResponse(response);
+				destinationPlayer.handleSelectOpponentResponse(sourcePlayerResponse);
+				sourcePlayer.handleSelectOpponentResponse(destinationPlayerResponse);
 				if(response.getRequestAccepted())
 				{
 					sourcePlayer.setState(PlayerState.ACCEPTED_OPPONENT);
+					destinationPlayer.setState(PlayerState.ACCEPTED_OPPONENT);
 					matchPlayers(sourcePlayer, destinationPlayer);
 				}
 				else
@@ -791,10 +806,10 @@ class ClientHandler extends Thread
 			player2.setOpponent(player1);
 			player2.setState(PlayerState.READY_FOR_GAME_START);
 			log.info("wwss matchPlayers: match successful.");
-			SimpleMessage player1ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player2.getUsername());
-			SimpleMessage player2ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player1.getUsername());
-			player1.handleSimpleMessage(player1ConfirmationMsg);
-			player2.handleSimpleMessage(player2ConfirmationMsg);
+//			SimpleMessage player1ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player2.getUsername());
+//			SimpleMessage player2ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player1.getUsername());
+//			player1.handleSimpleMessage(player1ConfirmationMsg);
+//			player2.handleSimpleMessage(player2ConfirmationMsg);
 			return true;
 		}
 		catch(Exception e)
@@ -827,29 +842,32 @@ class ClientHandler extends Thread
 		log.info("wwss ClientHandler: setupGame: gameBoard created:");
 		player.getGameBoard().printBoardData();
 
-		CreateGameResponse response = new CreateGameResponse
-			(
-				1, 
-				player.getUsername(), 
-				"defaultGameType", 
-				player.getGameBoard().getRows(), 
-				player.getGameBoard().getCols(), 
-				1, 
-				1,
-				player.getOpponent().getUsername(), 
-				0, 
-				0, 
-				null, null, 
-				player.getGameBoard(), 
-				30000, 
-				null
-			);
+		// set some references for clarity when passing as args to each of the two responses (player and opponent)
+		Player opponent = player.getOpponent();
+		int playerUserID   = 1;
+		int opponentUserID = 2;
+		String playerUsername   = player.getUsername();
+		String opponentUsername = opponent.getUsername();
+		String gameType = "defaultGameType";
+		int boardRows = player.getGameBoard().getRows();
+		int boardCols = player.getGameBoard().getCols();
+		int gameID = 1;
+		int startingPlayerScore   = 0;
+		int startingOpponentScore = 0;
+		List<TileData> existingPlayerMoves   = null;
+		List<TileData> existingOpponentMoves = null;
+		final long GAME_DURATION_MS = 30000;
+		String errMsg = null;
 		
+		// create and send the Create Game Response for the player on this thread
+		CreateGameResponse responseForPlayer = new CreateGameResponse(playerUserID, playerUsername, gameType, boardRows, boardCols, gameID, opponentUserID, opponentUsername, startingPlayerScore, startingOpponentScore, existingPlayerMoves, existingOpponentMoves, gameBoard, GAME_DURATION_MS, errMsg);
 		player.setState(PlayerState.PLAYING_GAME);
-		player.handleCreateGameResponse(response);
+		player.handleCreateGameResponse(responseForPlayer);
 
+		// create and send the Create Game Response for the opponent of the player on this thread
+		CreateGameResponse responseForOpponent = new CreateGameResponse(opponentUserID, opponentUsername, gameType, boardRows, boardCols, gameID, playerUserID, playerUsername, startingOpponentScore, startingPlayerScore, existingOpponentMoves, existingPlayerMoves, gameBoard, GAME_DURATION_MS, errMsg);
 		player.getOpponent().setState(PlayerState.PLAYING_GAME);
-		player.getOpponent().handleCreateGameResponse(response);
+		player.getOpponent().handleCreateGameResponse(responseForOpponent);
 	}
 	
 	/**
