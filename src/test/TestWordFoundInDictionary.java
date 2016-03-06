@@ -27,7 +27,7 @@ public class TestWordFoundInDictionary
 		TileData td3 = new TileData(0, 3, e, false);
 		TileData td4 = new TileData(0, 4, d, false);
 		
-		List<TileData> move = new ArrayList<TileData>();
+		ArrayList<TileData> move = new ArrayList<TileData>();
 		move.add(td0);
 		move.add(td1);
 		move.add(td2);

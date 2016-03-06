@@ -51,6 +51,20 @@ public class Player
 
 	
 	/////////////////////////
+	// SCORING
+	
+	public void addToScore(int points)
+	{
+		setScore( getScore() + points );
+	}
+	
+	public void resetScore()
+	{
+		setScore(0);
+	}
+	
+	
+	/////////////////////////
 	// GETTERS/SETTERS
 	
 	public String getState()
@@ -68,7 +82,6 @@ public class Player
 	{
 		return gameBoard;
 	}
-
 
 	public void setGameBoard(GameBoard gameBoard)
 	{
@@ -189,6 +202,20 @@ public class Player
 	public void handleCreateGameResponse(CreateGameResponse response)
 	{
 		log.info("handleCreateGameResponse: " + response);
+		
+		try
+		{
+			out.writeObject(response);
+		} 
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void handleEndGameResponse(EndGameResponse response)
+	{
+		log.info("handleEndGameResponse: " + response);
 		
 		try
 		{

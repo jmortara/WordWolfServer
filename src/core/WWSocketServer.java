@@ -52,7 +52,7 @@ public class WWSocketServer
         	ioe.printStackTrace();
         }
         log.info("wwss First log message");
-        log.info("wwss Server version: " + Consts.VERSION);
+        log.info("wwss Server version: " + Consts.SERVER_VERSION);
 
         Model.init();
         

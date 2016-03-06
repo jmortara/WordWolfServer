@@ -18,6 +18,7 @@ import com.mortaramultimedia.wordwolf.shared.game.Validator;
 import com.mortaramultimedia.wordwolf.shared.messages.*;
 import com.sun.xml.internal.ws.developer.MemberSubmissionAddressing.Validation;
 
+import constants.Consts;
 import constants.Errors;
 import data.Model;
 import data.Player;
@@ -211,6 +212,13 @@ class ClientHandler extends Thread
             	else if(obj instanceof EndGameRequest)
             	{
             		handleEndGameRequest(((EndGameRequest) obj), out);
+            	}
+            	/**
+            	 * If receiving a PostEndGameActionRequest, if a rematch is requested, start one; if not, let client decide next action.
+            	 */
+            	else if(obj instanceof PostEndGameActionRequest)
+            	{
+            		handlePostEndGameActionRequest(((PostEndGameActionRequest) obj), out);
             	}
             	
             	out.flush();
@@ -648,20 +656,20 @@ class ClientHandler extends Thread
     			pointsAwarded = calculateScoreFromMove(request.getGameMove());
         		if(player != null)
         		{
-        			player.setScore(player.getPort() + pointsAwarded);
-        			response = new GameMoveResponse(player.getUsername(), -1, true, true, pointsAwarded, null);
+        			player.addToScore(pointsAwarded);
+        			response = new GameMoveResponse(player.getUsername(), -1, true, true, pointsAwarded, player.getScore(), null);
         		}
     		}
     		else
     		{
-    			log.warning("wwss handleGameMoveRequest: move has not passed validation. Not calculating a score for it.");
-    			response = new GameMoveResponse(player.getUsername(), -1, true, false, 0, Errors.GAME_MOVE_INVALID);
+    			log.warning("wwss handleGameMoveRequest: move has not passed validation. Not scoring it.");
+    			response = new GameMoveResponse(player.getUsername(), -1, true, false, 0, player.getScore(), Errors.GAME_MOVE_INVALID);
     		}
     	}
     	else
     	{
     		log.warning("wwss handleGameMoveRequest: no gameBoard exists, so cannot process move. Ignoring.");
-			response = new GameMoveResponse(player.getUsername(), -1, false, false, 0, Errors.GAME_BOARD_IS_NULL);
+			response = new GameMoveResponse(player.getUsername(), -1, false, false, 0, player.getScore(), Errors.GAME_BOARD_IS_NULL);
     	}
     	
     	sendObject(response);
@@ -671,18 +679,39 @@ class ClientHandler extends Thread
 	{
     	log.info("wwss handleEndGameRequest: " + request);
     	
-    	//TODO: wrap up on the server side before sending the confirmation response
+    	//TODO: wrap up on the server side before sending the confirmation response. make sure both requests have come in before sending a unified response.
     	
     	log.info("wwss handleEndGameRequest: sending EndGameResponse to player: " + player.getUsername());
     	player.setState(PlayerState.GAME_ENDED);
-    	EndGameResponse playerResponse = new EndGameResponse(player.getUsername(), -1, true, player.getScore(), null);
-		sendObject(playerResponse);
+    	EndGameResponse playerResponse = new EndGameResponse(player.getUsername(), -1, true, player.getScore(), player.getOpponent().getScore(), null);
+		player.handleEndGameResponse(playerResponse);
     	
     	//TODO: note that the opponent response here is not generated from a request from that opponent
     	log.info("wwss handleEndGameRequest: sending EndGameResponse to opponent: " + player.getOpponent().getUsername());
     	player.getOpponent().setState(PlayerState.GAME_ENDED);
-    	EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), null);
-		sendObject(opponentResponse);
+    	EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), player.getScore(), null);
+    	player.getOpponent().handleEndGameResponse(opponentResponse);
+	}
+	
+	private void handlePostEndGameActionRequest(PostEndGameActionRequest request, ObjectOutputStream out)
+	{
+    	log.info("wwss handlePostEndGameActionRequest: " + request);
+		
+    	// if this thread's player requested a rematch, reformat the request into a Select Opponent Request and handle it as usual
+	    if(request.getRematch())
+	    {
+	    	player.resetScore();
+	    	player.getOpponent().resetScore();
+	    	SelectOpponentRequest selectOpponentRequest = new SelectOpponentRequest(request.getUserName(), request.getOpponentUserName());
+	    	handleSelectOpponentRequest(selectOpponentRequest, out);
+			//setupGame(request.getBoardRows(), request.getBoardCols());
+	    	//CreateGameResponse createGameResponse = new CreateGameResponse(request.getUserID(),  request.getUserName(),  "game_type_rematch",  request.getBoardRows(),  request.getBoardCols(),  -1,  request.getOpponentUserID(),  request.getOpponentUserName(),  0,  0,  null,  null,  gameBoard,  Consts.DEFAULT_GAME_DURATION_MS,  null);
+	    }
+	    // if no rematch was requested... TBD
+	    else
+	    {
+	    	//TODO = fill in Game Over with no rematch behavior
+	    }
 	}
 	
 	/**
@@ -806,10 +835,10 @@ class ClientHandler extends Thread
 			player2.setOpponent(player1);
 			player2.setState(PlayerState.READY_FOR_GAME_START);
 			log.info("wwss matchPlayers: match successful.");
-//			SimpleMessage player1ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player2.getUsername());
-//			SimpleMessage player2ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player1.getUsername());
-//			player1.handleSimpleMessage(player1ConfirmationMsg);
-//			player2.handleSimpleMessage(player2ConfirmationMsg);
+			//SimpleMessage player1ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player2.getUsername());
+			//SimpleMessage player2ConfirmationMsg = new SimpleMessage("You are confirmed to have an opponent: " + player1.getUsername());
+			//player1.handleSimpleMessage(player1ConfirmationMsg);
+			//player2.handleSimpleMessage(player2ConfirmationMsg);
 			return true;
 		}
 		catch(Exception e)
@@ -835,13 +864,31 @@ class ClientHandler extends Thread
 		
 		log.info("wwss ClientHandler: setupGame between " + player.getUsername() + " and " + player.getOpponent().getUsername());
 		gameBoardBuilder = new GameBoardBuilder();
-		GameBoard gameBoard = gameBoardBuilder.getNewGameBoard(-1, requestedRows, requestedCols, GameBoardBuilder.CHARACTER_SET_A);	//TODO: make charset dynamic?
+		GameBoard gameBoard = gameBoardBuilder.getNewGameBoard(-1, requestedRows, requestedCols, Consts.DEFAULT_CHARACTER_SET);	//TODO: make charset dynamic?
 		player.setGameBoard(gameBoard);
 		player.getOpponent().setGameBoard(gameBoard);
 		
 		log.info("wwss ClientHandler: setupGame: gameBoard created:");
 		player.getGameBoard().printBoardData();
 
+		// TODO = this var is now unused, remove
+		CreateGameResponse response = new CreateGameResponse
+			(
+				1, 
+				player.getUsername(), 
+				"defaultGameType", 
+				player.getGameBoard().getRows(), 
+				player.getGameBoard().getCols(), 
+				1, 
+				1,
+				player.getOpponent().getUsername(), 
+				0, 
+				0, 
+				null, null, 
+				player.getGameBoard(), 
+				Consts.DEFAULT_GAME_DURATION_MS, 
+				null
+			);
 		// set some references for clarity when passing as args to each of the two responses (player and opponent)
 		Player opponent = player.getOpponent();
 		int playerUserID   = 1;
@@ -856,7 +903,7 @@ class ClientHandler extends Thread
 		int startingOpponentScore = 0;
 		List<TileData> existingPlayerMoves   = null;
 		List<TileData> existingOpponentMoves = null;
-		final long GAME_DURATION_MS = 30000;
+		final long GAME_DURATION_MS = Consts.DEFAULT_GAME_DURATION_MS;
 		String errMsg = null;
 		
 		// create and send the Create Game Response for the player on this thread

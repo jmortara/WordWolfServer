@@ -83,7 +83,7 @@ public class TestGameBoardBuilder
 		TileData td4 = new TileData(2, 2, d, false);
 		
 		// ... or here to try various invalid moves
-		List<TileData> move = new ArrayList<TileData>();
+		ArrayList<TileData> move = new ArrayList<TileData>();
 		move.add(td0);
 		move.add(td1);
 		move.add(td2);
