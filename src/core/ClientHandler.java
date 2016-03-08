@@ -231,21 +231,10 @@ class ClientHandler extends Thread
          */
         catch(EOFException e)
         {
-        	//TODO: also close client socket in addition to in/out streams
-        	log.info("wwss EOFException on socket : " + e);
-        	log.info("wwss Client may have disconnected. Closing input and output object streams on this thread...");
-        	try
-        	{
-        		setPlayerStateToDisconnected(this.player);
-        		
-        		out.close();
-        		in.close();
-        	}
-        	catch(IOException e1)
-        	{
-            	log.warning("wwss IOException while closing object streams: " + e1);
-        		e1.printStackTrace();
-        	}
+        	//log.info("wwss EOFException on socket : " + e);
+        	log.info("wwss Client probably disconnected. Closing input and output object streams on this thread...");
+
+        	handleDisconnect();
         }
         catch (IOException e)
         {
@@ -264,8 +253,53 @@ class ClientHandler extends Thread
 		}
     }
 	
+	
+	private void handleDisconnect()
+	{
+        log.warning("wwss handleDisconnect of player");
+
+		if(this.player != null)
+		{
+			Player opponent = this.player.getOpponent();
+	        // reset this player's opponent status to free the opponent up for a new match
+			if(opponent != null)
+			{
+		        log.warning("wwss handleDisconnect: removing player's opponent: " + this.player.getOpponent().getUsername());
+				opponent.removeOpponent();
+				opponent.setState(PlayerState.IDLE);
+				//TODO: *** new message type: notify opponent that this player has disconnected... the opponent should either finish game or start over
+			}
+
+			log.warning("wwss handleDisconnect of player: " + this.player.getUsername());
+			this.player.removeOpponent();
+			// set this player's state also
+			setPlayerStateToDisconnected(this.player);
+		}
+		
+		try 
+		{
+			out.close();
+			in.close();
+		} 
+		catch (IOException e) 
+		{
+        	log.warning("wwss IOException while closing object streams: " + e);
+			e.printStackTrace();
+		}
+		
+    	//TODO: also close client socket in addition to in/out streams / check that this is working correctly
+		try 
+		{
+			connection.close();
+		} 
+		catch (IOException e) 
+		{
+			e.printStackTrace();
+		}
+	}
+	
 	/**
-	 * Shortcut to set the state of any player to disconnectd. 
+	 * Shortcut to set the state of any player to disconnected. 
 	 * @param p
 	 */
 	private void setPlayerStateToDisconnected(Player p)
@@ -409,7 +443,8 @@ class ClientHandler extends Thread
 	 */
 	private void handleGetPlayerListRequest(GetPlayerListRequest request, ObjectOutputStream out)
 	{
-    	log.info("wwss handleGetPlayerListRequest: " + request.getRequestType());
+		log.info("wwss handleGetPlayerListRequest: " + request.getRequestType());
+    	log.info("wwss handleGetPlayerListRequest: size of Model.players: " + Model.players.size());
 
     	String requestType = request.getRequestType();
     	String requestedUsername = null;
@@ -474,12 +509,14 @@ class ClientHandler extends Thread
 					break;
 					
 				
-				case PlayerListType.ALL_UNMATCHED_PLAYERS:
+				case PlayerListType.ALL_UNMATCHED_PLAYERS:			// THIS IS CURRENTLY THE TYPE REQUESTED BY THE CLIENT
 					if(Model.players != null)
 					{
 						for(Player playerInList : Model.players)
 						{
-							if(!playerInList.equals(this.player))
+							log.info("wwss handleGetPlayerListRequest: checking player in Model.players: " + playerInList );
+							//if(!playerInList.equals(this.player))	// using object comparison
+							if(playerInList != this.player)			// using memory address equality
 							{
 								if(playerInList.getOpponent() == null)	//TODO - add a condition for PLAYER_STATE_IDLE etc
 								{
@@ -495,14 +532,18 @@ class ClientHandler extends Thread
 					// do nothing; empty list
 					break;
 			}
+
+	    	log.info("wwss handleGetPlayerListResponse: got player list: " + list.toString());
+	    	
+			response = new GetPlayerListResponse(requestType, list);
+	    	log.info("wwss handleGetPlayerListResponse: post-serialized player list: " + response.getPlayersCopy());
+			sendObject(response);
+			player.setState(PlayerState.IDLE);
     	}
-    	
-    	log.info("wwss handleGetPlayerListResponse: got player list: " + list.toString());
-    	
-		response = new GetPlayerListResponse(requestType, list);
-    	log.info("wwss handleGetPlayerListResponse: post-serialized player list: " + response.getPlayersCopy());
-		sendObject(response);
-		player.setState(PlayerState.IDLE);
+    	else
+    	{
+        	log.warning("wwss handleGetPlayerListResponse: WARNING: PLAYER IS NULL. Not sending player list.");
+    	}
 	}
 	
 	private void handleSelectOpponentRequest(SelectOpponentRequest request, ObjectOutputStream out)
@@ -696,21 +737,38 @@ class ClientHandler extends Thread
 	private void handlePostEndGameActionRequest(PostEndGameActionRequest request, ObjectOutputStream out)
 	{
     	log.info("wwss handlePostEndGameActionRequest: " + request);
+    	
+    	Player opponent = player.getOpponent();
 		
-    	// if this thread's player requested a rematch, reformat the request into a Select Opponent Request and handle it as usual
+    	player.resetScore();
+    	if(opponent != null)
+    	{
+        	opponent.resetScore();
+    	}
+    	
+    	// if this thread's player requested a rematch, reformat the request into a Select Opponent Request and send it to their opponent as usual
 	    if(request.getRematch())
 	    {
-	    	player.resetScore();
-	    	player.getOpponent().resetScore();
 	    	SelectOpponentRequest selectOpponentRequest = new SelectOpponentRequest(request.getUserName(), request.getOpponentUserName());
 	    	handleSelectOpponentRequest(selectOpponentRequest, out);
 			//setupGame(request.getBoardRows(), request.getBoardCols());
 	    	//CreateGameResponse createGameResponse = new CreateGameResponse(request.getUserID(),  request.getUserName(),  "game_type_rematch",  request.getBoardRows(),  request.getBoardCols(),  -1,  request.getOpponentUserID(),  request.getOpponentUserName(),  0,  0,  null,  null,  gameBoard,  Consts.DEFAULT_GAME_DURATION_MS,  null);
 	    }
-	    // if no rematch was requested... TBD
+	    
+	    // if no rematch was requested, notify this player's opponent so they can look for a new opponent
 	    else
 	    {
-	    	//TODO = fill in Game Over with no rematch behavior
+	    	// set both players free of opponents
+	    	if(opponent != null)
+	    	{
+	    		opponent.setState(PlayerState.IDLE);
+	    		opponent.removeOpponent();
+
+	    		// and notify the player's opponent of the news
+		    	PostEndGameActionResponse rematchDeclinedResponse = new PostEndGameActionResponse(false, request.getUserName(), request.getOpponentUserName());
+		    	opponent.handlePostEndGameActionResponse(rematchDeclinedResponse);
+	    	}
+	    	player.removeOpponent();
 	    }
 	}
 	

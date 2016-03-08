@@ -23,11 +23,11 @@ public class Player
 	private Socket conn;
 	private ObjectInputStream in;
 	private ObjectOutputStream out;
-	private int port;
-	private Player opponent;
-	private String username;
-	private String state;
-	private GameBoard gameBoard;
+	private int port = -1;
+	private Player opponent = null;
+	private String username = null;
+	private String state = null;
+	private GameBoard gameBoard = null;
 	private int score = 0;
 	
 
@@ -63,6 +63,11 @@ public class Player
 		setScore(0);
 	}
 	
+	public void removeOpponent()
+	{
+		log.info( "removeOpponent");
+		setOpponent(null);
+	}
 	
 	/////////////////////////
 	// GETTERS/SETTERS
@@ -116,9 +121,19 @@ public class Player
 	public void setOpponent(Player opponent)
 	{
 		this.opponent = opponent;
-	 	log.info( "setOpponent: opponent Player selected on port: " + this.opponent.getPort() );
+		//log.info( "setOpponent: opponent Player selected on port: " + this.opponent.getPort() );
+	 	log.info( "setOpponent: " + getUsername() + "'s opponent Player set to: " + getOpponentUsername() );
 	}
 
+	private String getOpponentUsername()
+	{
+		if(this.getOpponent() == null)
+		{
+			return "NONE";
+		}
+		else return this.getOpponent().getUsername();
+	}
+	
 	public String getUsername()
 	{
 		return username;
@@ -226,6 +241,20 @@ public class Player
 			e.printStackTrace();
 		}
 	}
+	
+	public void handlePostEndGameActionResponse(PostEndGameActionResponse response)
+	{
+		log.info("handlePostEndGameActionResponse: " + response);
+		
+		try
+		{
+			out.writeObject(response);
+		} 
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
 
 	//////////////////////////
 	// Object overrides
@@ -233,29 +262,29 @@ public class Player
 	@Override
 	public String toString()
 	{
-		return "Player [port=" + port + ", username=" + username + ", state=" + state + "]";
+		return "Player [port=" + port + ", username=" + username + ", state=" + state + ", opponent=" + getOpponentUsername() + "]";
 	}
 
 
 	@Override
-	public int hashCode()
-	{
+	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result
-				+ ((opponent == null) ? 0 : opponent.hashCode());
+		result = prime * result + ((conn == null) ? 0 : conn.hashCode());
+		result = prime * result + ((gameBoard == null) ? 0 : gameBoard.hashCode());
+		result = prime * result + ((in == null) ? 0 : in.hashCode());
+		result = prime * result + ((opponent == null) ? 0 : opponent.hashCode());
+		result = prime * result + ((out == null) ? 0 : out.hashCode());
 		result = prime * result + port;
 		result = prime * result + score;
 		result = prime * result + ((state == null) ? 0 : state.hashCode());
-		result = prime * result
-				+ ((username == null) ? 0 : username.hashCode());
+		result = prime * result + ((username == null) ? 0 : username.hashCode());
 		return result;
 	}
 
 
 	@Override
-	public boolean equals(Object obj)
-	{
+	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
 		if (obj == null)
@@ -263,24 +292,41 @@ public class Player
 		if (getClass() != obj.getClass())
 			return false;
 		Player other = (Player) obj;
-		if (opponent == null)
-		{
+		if (conn == null) {
+			if (other.conn != null)
+				return false;
+		} else if (!conn.equals(other.conn))
+			return false;
+		if (gameBoard == null) {
+			if (other.gameBoard != null)
+				return false;
+		} else if (!gameBoard.equals(other.gameBoard))
+			return false;
+		if (in == null) {
+			if (other.in != null)
+				return false;
+		} else if (!in.equals(other.in))
+			return false;
+		if (opponent == null) {
 			if (other.opponent != null)
 				return false;
 		} else if (!opponent.equals(other.opponent))
+			return false;
+		if (out == null) {
+			if (other.out != null)
+				return false;
+		} else if (!out.equals(other.out))
 			return false;
 		if (port != other.port)
 			return false;
 		if (score != other.score)
 			return false;
-		if (state == null)
-		{
+		if (state == null) {
 			if (other.state != null)
 				return false;
 		} else if (!state.equals(other.state))
 			return false;
-		if (username == null)
-		{
+		if (username == null) {
 			if (other.username != null)
 				return false;
 		} else if (!username.equals(other.username))
