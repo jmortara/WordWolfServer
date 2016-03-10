@@ -9,18 +9,17 @@ import game.GameBoardBuilder;
 public class Consts
 {
 	// Server
-	public static final String 	SERVER_VERSION = "0.0.11";
+	public static final String 	SERVER_VERSION = "0.0.12";
 	public static final int 	PORT = 4001;
 	public static final int 	MAX_BACKLOG_CONNECTIONS = 10;
 	public static final String 	STARTUP_MESSAGE = 
 			
-		"#     #                      #     #                          #####                                     \n" +
-		"#  #  #  ####  #####  #####  #  #  #  ####  #      ######    #     # ###### #####  #    # ###### #####  \n" +
-		"#  #  # #    # #    # #    # #  #  # #    # #      #         #       #      #    # #    # #      #    # \n" + 
-		"#  #  # #    # #    # #    # #  #  # #    # #      #####      #####  #####  #    # #    # #####  #    # \n" + 
-		"#  #  # #    # #####  #    # #  #  # #    # #      #               # #      #####  #    # #      #####  \n" + 
-		"#  #  # #    # #   #  #    # #  #  # #    # #      #         #     # #      #   #   #  #  #      #   #  \n" + 
-		" ## ##   ####  #    # #####   ## ##   ####  ###### #          #####  ###### #    #   ##   ###### #    # "   + "v" + SERVER_VERSION + "\n"; 
+		"#     #                   #     #                      ####                              \n" +
+		"#  #  #  ###  ####  ####  #  #  #  ###  #    ####     #    # #### ####  #   # #### ####  \n" +
+		"#  #  # #   # #   # #   # #  #  # #   # #    #        #      #    #   # #   # #    #   # \n" + 
+		"#  #  # #   # ####  #   # #  #  # #   # #    ###       ####  ###  ####  #   # ###  ####  \n" + 
+		"#  #  # #   # #  #  #   # #  #  # #   # #    #        #    # #    #  #   # #  #    #  #  \n" + 
+		" ## ##   ###  #   # ####   ## ##   ###  #### #         ####  #### #   #   #   #### #   # "   + "v" + SERVER_VERSION + "\n\n"; 
 	
 	
 	// Game 

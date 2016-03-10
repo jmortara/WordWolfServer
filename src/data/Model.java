@@ -6,8 +6,9 @@ import java.util.HashMap;
 
 public class Model 
 {
-	public static ArrayList<Player> players;
+	private static ArrayList<Player> players;
 	private static HashMap<String, String> globalDictionary;
+	
 	
 	public static void init()
 	{
@@ -15,6 +16,36 @@ public class Model
 		{
 			players = new ArrayList<Player>();
 		}
+	}
+
+	public static void addPlayerToList(Player player)
+	{
+		if(player != null)
+		{
+			players.add(player);
+			System.out.println("Player added to global list: " + player.getUsername());
+		}
+	}
+	
+	public static void removePlayerFromList(Player player)
+	{
+		if(player != null)
+		{
+			if(players.contains(player))
+			{
+				players.remove(player);
+				System.out.println("Player removed from global list: " + player.getUsername());
+			}
+		}
+	}
+
+	
+	//////////////////////
+	// GETTERS / SETTERS
+
+	public static ArrayList<Player> getPlayers() 
+	{
+		return players;
 	}
 
 	public static HashMap<String, String> getGlobalDictionary()

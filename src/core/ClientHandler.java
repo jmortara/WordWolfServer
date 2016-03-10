@@ -42,6 +42,7 @@ class ClientHandler extends Thread
     private GameBoardBuilder gameBoardBuilder;	// the GameBoardBuilder for this thread
     //private GameBoard gameBoard;				// the data for the game's board-- its rows, cols, and letters (moved to Player)
     
+    private Boolean threadActive = true;		// is this thread active? if false, thread should close connections and shut down
     
     /**
      * ClientHandler constructor
@@ -123,12 +124,13 @@ class ClientHandler extends Thread
     	TestMySQLAccess.testConnection();
     }
     
+    @Override
 	public void run()
     {
         try
         {
             // start reading input from client
-            while( true )
+            while( this.threadActive )
             {
                 Object obj = in.readObject();
             	logMsg( "RECEIVED: " + obj );
@@ -252,6 +254,13 @@ class ClientHandler extends Thread
 			e.printStackTrace();
 		}
     }
+    
+    @Override
+    protected void finalize()
+    {
+        log.warning("wwss finalize ************ thread ");
+
+    }
 	
 	
 	private void handleDisconnect()
@@ -274,6 +283,11 @@ class ClientHandler extends Thread
 			this.player.removeOpponent();
 			// set this player's state also
 			setPlayerStateToDisconnected(this.player);
+			
+			//TODO: leave player state as disconnected for some duration? have cleanup thread remove players? set a timer in this thread?
+			Model.removePlayerFromList(this.player);	//TODO - test
+			nullifyPlayer(this.player);					// removing from list and nullifying should allow same player to login again without issues
+			logPlayersList();
 		}
 		
 		try 
@@ -287,7 +301,7 @@ class ClientHandler extends Thread
 			e.printStackTrace();
 		}
 		
-    	//TODO: also close client socket in addition to in/out streams / check that this is working correctly
+    	//TODO: check that this is working correctly
 		try 
 		{
 			connection.close();
@@ -296,6 +310,8 @@ class ClientHandler extends Thread
 		{
 			e.printStackTrace();
 		}
+		
+		this.threadActive = false;
 	}
 	
 	/**
@@ -306,8 +322,21 @@ class ClientHandler extends Thread
 	{
 		if(p != null)
 		{
-	        log.warning("wwss setPlayerStateToDisconnected: " + p.getUsername());
+	        log.warning("wwss setPlayerStateToDisconnected ***: " + p.getUsername());
 			p.setState(PlayerState.DISCONNECTED);
+		}
+	}
+	
+	/**
+	 * Set the value of a player to null, for garbage collection.
+	 * @param p
+	 */
+	private void nullifyPlayer(Player p)
+	{
+		if(p != null)
+		{
+	        log.warning("wwss nullifyPlayer ***: " + p.getUsername());
+			p = null;
 		}
 	}
 	
@@ -418,14 +447,14 @@ class ClientHandler extends Thread
 		}
 
 		
-		// create the server-side Player obj
+		// create the server-side Player obj and add it to the global list of players
 		Boolean playerCreated = createPlayer(loginResponse);
 		log.info("wwss handleLoginRequest: create player succeeded? " + playerCreated);
 		
 		if(!playerCreated)
 		{
 			log.info("wwss handleLoginRequest: attempting to reattach previously existing player... " + loginResponse.getUserName());
-			for(Player existingPlayer : Model.players)
+			for(Player existingPlayer : Model.getPlayers())
 			{
 				if(existingPlayer.getUsername() == loginResponse.getUserName())
 				{
@@ -444,7 +473,7 @@ class ClientHandler extends Thread
 	private void handleGetPlayerListRequest(GetPlayerListRequest request, ObjectOutputStream out)
 	{
 		log.info("wwss handleGetPlayerListRequest: " + request.getRequestType());
-    	log.info("wwss handleGetPlayerListRequest: size of Model.players: " + Model.players.size());
+    	log.info("wwss handleGetPlayerListRequest: size of Model.players: " + Model.getPlayers().size());
 
     	String requestType = request.getRequestType();
     	String requestedUsername = null;
@@ -474,7 +503,7 @@ class ClientHandler extends Thread
 					break;
 					
 				case PlayerListType.SPECIFIC_PLAYER_BY_USERNAME:
-					if(Model.players != null && request.getRequestedUsername() != null)
+					if(Model.getPlayers() != null && request.getRequestedUsername() != null)
 					{
 						Player requestedPlayer = getPlayerByUsername(request.getRequestedUsername());
 						requestedUsername = requestedPlayer.getUsername();
@@ -486,9 +515,9 @@ class ClientHandler extends Thread
 					break;
 	
 				case PlayerListType.ALL_PLAYERS:
-					if(Model.players != null)
+					if(Model.getPlayers() != null)
 					{
-						for(Player playerInList : Model.players)
+						for(Player playerInList : Model.getPlayers())
 						{
 							if(playerInList != this.player)
 							{
@@ -499,9 +528,9 @@ class ClientHandler extends Thread
 					break;
 	
 				case PlayerListType.ALL_ACTIVE_PLAYERS:
-					if(Model.players != null)
+					if(Model.getPlayers() != null)
 					{
-						for(Player playerInList : Model.players)
+						for(Player playerInList : Model.getPlayers())
 						{
 							list.add(playerInList.getUsername());
 						}
@@ -510,9 +539,9 @@ class ClientHandler extends Thread
 					
 				
 				case PlayerListType.ALL_UNMATCHED_PLAYERS:			// THIS IS CURRENTLY THE TYPE REQUESTED BY THE CLIENT
-					if(Model.players != null)
+					if(Model.getPlayers() != null)
 					{
-						for(Player playerInList : Model.players)
+						for(Player playerInList : Model.getPlayers())
 						{
 							log.info("wwss handleGetPlayerListRequest: checking player in Model.players: " + playerInList );
 							//if(!playerInList.equals(this.player))	// using object comparison
@@ -559,12 +588,18 @@ class ClientHandler extends Thread
 		{
 			String destinationUsername = request.getDestinationUserName();
 			Player destinationPlayer = getPlayerByUsername(destinationUsername);
-			if(destinationPlayer != null)
+			
+			if(destinationPlayer != null && Model.getPlayers().contains(destinationPlayer))
 			{
 				destinationPlayer.setState(PlayerState.RECEIVED_OPPONENT_REQUEST);
 				destinationPlayer.handleSelectOpponentRequest(request);
 			}
-			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
+			else 
+			{
+				log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
+				SelectOpponentResponse playerResponse   = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName());
+				sendObject(playerResponse);
+			}
 		}
 		catch(Exception e)
 		{
@@ -794,10 +829,11 @@ class ClientHandler extends Thread
 			}
 			else
 			{
-				Model.players.add(player);
+				Model.addPlayerToList(player);
 				attachPlayer(player);
 				
-				logMsg(" New Player Created! Num players now: " + Model.players.size());
+				logMsg(" New Player Created! Num players now: " + Model.getPlayers().size());
+				logPlayersList();
 				return true;
 			}
 		}
@@ -833,14 +869,14 @@ class ClientHandler extends Thread
 	{
 		logMsg( "playerExists? " + username );
 
-		if ( Model.players == null ) 
+		if ( Model.getPlayers() == null ) 
 		{
 			logMsg( "playerExists: players list is null." );
 			return false;
 		}
 		
 		Boolean playerFound = false;
-		for ( Player player : Model.players )
+		for ( Player player : Model.getPlayers() )
 		{
 			if ( player.getUsername().equals( username ) )
 			{
@@ -857,7 +893,7 @@ class ClientHandler extends Thread
 	{
 		logMsg( "getPlayerByUsername? " + username );
 
-		if ( Model.players == null ) 
+		if ( Model.getPlayers() == null ) 
 		{
 			logMsg( "getPlayerByUsername: players list is null." );
 			return null;
@@ -865,7 +901,7 @@ class ClientHandler extends Thread
 		
 		Player existingPlayer = null;
 		
-		for ( Player player : Model.players )
+		for ( Player player : Model.getPlayers() )
 		{
 			if ( player.getUsername() == null )
 			{
@@ -990,6 +1026,22 @@ class ClientHandler extends Thread
 		}
 		moveScore = numTiles;
 		return moveScore;
+	}
+	
+	/**
+	 * Print a list of current players in the global players list.
+	 */
+	public void logPlayersList()
+	{
+		String playerNamesStr = ""; 
+		if(Model.getPlayers() != null)
+		{
+			for(Player playerInList : Model.getPlayers())
+			{
+				playerNamesStr += (playerInList.getUsername() + " ");
+			}
+		}
+		log.info("wwss ClientHandler: logPlayersList: current players list: " + playerNamesStr);
 	}
 	
 	public void logMsg(String msg)
