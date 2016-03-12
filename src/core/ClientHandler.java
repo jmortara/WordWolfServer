@@ -742,6 +742,7 @@ class ClientHandler extends Thread
 	private void handleGameMoveRequest(GameMoveRequest request, ObjectOutputStream out)
 	{
     	log.info("wwss handleGameMoveRequest: " + request);
+		String wordSubmitted = Validator.getWordFromGameMove(request.getGameMove());
     	int pointsAwarded = 0;
     	GameMoveResponse response = null;
     	if(player.getGameBoard() != null)
@@ -753,19 +754,19 @@ class ClientHandler extends Thread
         		if(player != null)
         		{
         			player.addToScore(pointsAwarded);
-        			response = new GameMoveResponse(player.getUsername(), -1, true, true, pointsAwarded, player.getScore(), null);
+        			response = new GameMoveResponse(player.getUsername(), -1, true, true, wordSubmitted, pointsAwarded, player.getScore(), null);
         		}
     		}
     		else
     		{
     			log.warning("wwss handleGameMoveRequest: move has not passed validation. Not scoring it.");
-    			response = new GameMoveResponse(player.getUsername(), -1, true, false, 0, player.getScore(), Errors.GAME_MOVE_INVALID);
+    			response = new GameMoveResponse(player.getUsername(), -1, true, false, wordSubmitted, 0, player.getScore(), Errors.GAME_MOVE_INVALID);
     		}
     	}
     	else
     	{
     		log.warning("wwss handleGameMoveRequest: no gameBoard exists, so cannot process move. Ignoring.");
-			response = new GameMoveResponse(player.getUsername(), -1, false, false, 0, player.getScore(), Errors.GAME_BOARD_IS_NULL);
+			response = new GameMoveResponse(player.getUsername(), -1, false, false, wordSubmitted, 0, player.getScore(), Errors.GAME_BOARD_IS_NULL);
     	}
     	
     	sendObject(response);
