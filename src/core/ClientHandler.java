@@ -672,11 +672,11 @@ class ClientHandler extends Thread
 	//TODO:FILL IN
 	private void handleCreateNewAccountRequest(CreateNewAccountRequest request, ObjectOutputStream out)
 	{
-    	log.info("wwss handleLoginRequest: FILL IN BEHAVIOR: " + request);
+    	log.info("wwss handleCreateNewAccountRequest: " + request);
     	
-/*    	String responseMsg;
+    	String responseMsg = null;
     	//SimpleMessage responseObj;
-    	LoginResponse loginResponse;
+    	CreateNewAccountResponse createNewAccountResponse = null;
     	
     	// attempt the login
 		Boolean createNewAccountSucceeded = false;
@@ -690,8 +690,28 @@ class ClientHandler extends Thread
 			e1.printStackTrace();
 		}
 		
-		// send the login response
 		if(createNewAccountSucceeded)
+		{
+	    	log.info("wwss handleCreateNewAccountRequest: new account creation succeeded.");
+			createNewAccountResponse = new CreateNewAccountResponse(true,  request.getUserName(), request.getPassword(), request.getEmail(), null);
+		}
+		else
+		{
+	    	log.info("wwss handleCreateNewAccountRequest: new account creation FAILED.");
+			createNewAccountResponse = new CreateNewAccountResponse(false,  request.getUserName(), request.getPassword(), request.getEmail(), ("ERROR: NEW ACCOUNT CREATION FAILED: " + createNewAccountResponse));
+		}
+		
+		try 
+		{
+			out.writeObject(createNewAccountResponse);
+		} 
+		catch (IOException e) 
+		{
+			e.printStackTrace();
+		}
+		
+		// send the login response
+		/*if(createNewAccountSucceeded)
 		{
 			//TODO: get a user/player obj back from the createNewUser() operation
 			loginResponse = new LoginResponse(1, request.getUserName(), createNewAccountSucceeded, null, false, -1);
