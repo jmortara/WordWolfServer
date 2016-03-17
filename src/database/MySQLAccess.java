@@ -88,11 +88,12 @@ public class MySQLAccess
 	        // also possible to get the columns via the column number
 	        // which starts at 1
 	        // e.g., resultSet.getSTring(2);
-	        String username 	= resultSet.getString("username");
-	        String email 		= resultSet.getString("email");
-	        int current_score 	= resultSet.getInt("current_score");
-	        int high_score 		= resultSet.getInt("high_score");
-	        System.out.println("username:" + username + ", email:" + email + ", current_score:" + current_score + ", high_score:" + high_score);
+	        String username 		= resultSet.getString("username");
+	        String email 			= resultSet.getString("email");
+	        int currentGameScore 	= resultSet.getInt("current_game_score");
+	        int highScore 			= resultSet.getInt("high_score");
+	        int totalScore 			= resultSet.getInt("total_score");
+	        System.out.println("username:" + username + ", email:" + email + ", current_game_score:" + currentGameScore + ", high_score:" + highScore + ", total_score:" + totalScore);
 //	        System.out.println("email: " + email);
 //	        System.out.println("current_score: " + current_score);
 //	        System.out.println("high_score: " + high_score);
@@ -124,7 +125,7 @@ public class MySQLAccess
 //	      resultSet = statement.execute("INSERT INTO users (username, password, email, current_score, high_score) VALUES ('" + username + "', 'pass123', 'm@m.com', 0, 0)");
 
 	      // preparedStatements can use variables and are more efficient
-	      preparedStatement = sqlConnection.prepareStatement("INSERT INTO users (username, password, email, current_score, high_score) VALUES (?, ?, ?, ?, ?)");
+	      preparedStatement = sqlConnection.prepareStatement("INSERT INTO users (username, password, email, current_game_score, high_score, total_score) VALUES (?, ?, ?, ?, ?, ?)");
 	      // "myuser, webpage, datum, summary, COMMENTS from FEEDBACK.COMMENTS");
 	      // parameters start with 1
 	      preparedStatement.setString(1, username);
@@ -133,6 +134,7 @@ public class MySQLAccess
 //	      preparedStatement.setDate(4, new java.sql.Date(2009, 12, 11));
 	      preparedStatement.setInt(4, 0);
 	      preparedStatement.setInt(5, 0);
+	      preparedStatement.setInt(6, 0);
 	      preparedStatement.executeUpdate();
 
 //	      preparedStatement = connection.prepareStatement("SELECT user, password, email, current_score, high_score from users");
@@ -171,26 +173,24 @@ public class MySQLAccess
 	  createNewUser(username, "pass"+rand, "deleteme"+rand+"@gmail.com");
   }
   
-  public void updateCurrentScore(String user) throws SQLException
+  public void updateCurrentGameScore(String user, int currentGameScore) throws SQLException
   {
-	System.out.println("updateHighScore: for: " + user);
+	System.out.println("updateCurrentGameScore: for: " + user);
 	
 	ResultSet userRecord = getUser( user, false );
 	
 	try
 	{
-		int existingCurrentScore = userRecord.getInt("current_score");
-		int newCurrentScore = existingCurrentScore + 1;
-	      preparedStatement = sqlConnection.prepareStatement("UPDATE users SET current_score=" + newCurrentScore + " WHERE username='" + user + "';");
-//	      preparedStatement.setInt(5, 0);
-	      preparedStatement.executeUpdate();
+	    preparedStatement = sqlConnection.prepareStatement("UPDATE users SET current_game_score=" + currentGameScore + " WHERE username='" + user + "';");
+//	    preparedStatement.setInt(5, 0);
+	    preparedStatement.executeUpdate();
 	      
-	      // check result
-	      getUser( user, true );
+	    // check result
+	    getUser( user, true );
 	}
 	catch (SQLException e)
 	{
-		System.out.println("updateHighScore: FAILED.");
+		System.out.println("updateCurrentGameScore: FAILED.");
 		throw e;
 	}
 	finally
@@ -237,6 +237,80 @@ public class MySQLAccess
 	*/
   }
   
+  /**
+   * Update the total score across all completed games for a player. This is a cumulative total for a leaderboard.
+   * @param username
+   * @param endedGameScore
+   * @throws SQLException
+   */
+  	public void updateTotalScore(String username, int endedGameScore) throws SQLException 
+ 	{
+		System.out.println("updateTotalScoreScore: for: " + username);
+	
+		ResultSet userRecord = getUser(username, false);
+	
+		try 
+		{
+			int existingTotalScore = userRecord.getInt("total_score");
+			int newTotalScore = existingTotalScore + endedGameScore;
+			preparedStatement = sqlConnection.prepareStatement("UPDATE users SET total_score=" + newTotalScore + " WHERE username='" + username + "';");
+			// preparedStatement.setInt(5, 0);
+			preparedStatement.executeUpdate();
+	
+			// check result
+			getUser(username, true);
+		} 
+		catch (SQLException e) 
+		{
+			System.out.println("updateTotalScoreScore: FAILED.");
+			throw e;
+		} 
+		finally 
+		{
+			if (userRecord != null) 
+			{
+				userRecord.close();
+			}
+		}
+	}
+
+	public void updateHighScore(String username, int endedGameScore) throws SQLException 
+	{
+		System.out.println("updateHighScore: for: " + username);
+
+		ResultSet userRecord = getUser(username, false);
+
+		try 
+		{
+			int existingHighScore = userRecord.getInt("high_score");
+			if(endedGameScore > existingHighScore)
+			{
+				preparedStatement = sqlConnection.prepareStatement("UPDATE users SET high_score=" + endedGameScore + " WHERE username='" + username + "';");
+				// preparedStatement.setInt(5, 0);
+				preparedStatement.executeUpdate();
+	
+				// check result
+				getUser(username, true);
+			}
+			else
+			{
+				System.out.println("updateHighScore: game score (" + endedGameScore + ") does not beat existing high score (" + existingHighScore + ").");
+			}
+		} 
+		catch (SQLException e) 
+		{
+			System.out.println("updateHighScore: FAILED.");
+			throw e;
+		} 
+		finally 
+		{
+			if (userRecord != null) 
+			{
+				userRecord.close();
+			}
+		}
+	}
+ 
 	public LoginResponse login(LoginRequest request, Boolean close)
 	{
 		System.out.println("MySQLAccess: login: " + request);
@@ -259,12 +333,12 @@ public class MySQLAccess
 				
 				System.out.println("MySQLAccess: login: user record located: " + request.getUserName());
 				//TODO: this section may also reveal issues if the ResultSet has more than one row
-				String username 	= resultSet.getString("username");
-				String email 		= resultSet.getString("email");
-				int current_score 	= resultSet.getInt("current_score");
-				int high_score 		= resultSet.getInt("high_score");
+				String username 		= resultSet.getString("username");
+				String email 			= resultSet.getString("email");
+				int currentGameScore 	= resultSet.getInt("current_game_score");
+				int highScore 			= resultSet.getInt("high_score");
 				
-				System.out.println("MySQLAccess: login: username:" + username + ", email:" + email + ", current_score:" + current_score + ", high_score:" + high_score);
+				System.out.println("MySQLAccess: login: username:" + username + ", email:" + email + ", current_game_score:" + currentGameScore + ", high_score:" + highScore);
 				response = new LoginResponse(true, 1, username, null, false, 0);
 			} 
 			// result set did not find at least one matching user? return response w/ error
@@ -324,11 +398,12 @@ public class MySQLAccess
 	      if ( rowLocated )
 	      {
 			System.out.println("getUser: user record located: " + user);
-			String username 	= resultSet.getString("username");
-			String email 		= resultSet.getString("email");
-			int current_score 	= resultSet.getInt("current_score");
-			int high_score 		= resultSet.getInt("high_score");
-			System.out.println("username:" + username + ", email:" + email + ", current_score:" + current_score + ", high_score:" + high_score);
+			String username 		= resultSet.getString("username");
+			String email 			= resultSet.getString("email");
+			int currentGameScore 	= resultSet.getInt("current_game_score");
+			int highScore 			= resultSet.getInt("high_score");
+			int totalScore 			= resultSet.getInt("total_score");
+			System.out.println("username:" + username + ", email:" + email + ", current_game_score:" + currentGameScore + ", high_score:" + highScore + ", total_score:" + totalScore);
 	      }
 	      else
 	      {

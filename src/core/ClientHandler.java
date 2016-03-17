@@ -782,12 +782,21 @@ class ClientHandler extends Thread
     	player.setState(PlayerState.GAME_ENDED);
     	EndGameResponse playerResponse = new EndGameResponse(player.getUsername(), -1, true, player.getScore(), player.getOpponent().getScore(), null);
 		player.handleEndGameResponse(playerResponse);
+		try 
+		{
+			dataAccessObj.updateHighScore( player.getUsername(), player.getScore());
+			dataAccessObj.updateTotalScore(player.getUsername(), player.getScore());
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
     	
     	//TODO: note that the opponent response here is not generated from a request from that opponent
-    	log.info("wwss handleEndGameRequest: sending EndGameResponse to opponent: " + player.getOpponent().getUsername());
+    	//log.info("wwss handleEndGameRequest: sending EndGameResponse to opponent: " + player.getOpponent().getUsername());
     	player.getOpponent().setState(PlayerState.GAME_ENDED);
-    	EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), player.getScore(), null);
-    	player.getOpponent().handleEndGameResponse(opponentResponse);
+    	//EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), player.getScore(), null);
+    	//player.getOpponent().handleEndGameResponse(opponentResponse);
 	}
 	
 	private void handlePostEndGameActionRequest(PostEndGameActionRequest request, ObjectOutputStream out)
