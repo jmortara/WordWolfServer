@@ -17,11 +17,11 @@ public class WWSocketServer
 {
     private static ServerSocket s;
     private static Socket conn;
+    private static Boolean acceptConnections = true;
     
     private static FileHandler logFileHandler;
     public static Logger log;
     private static SimpleFormatter logFormatter;	// see JDK_HOME/jre/lib/logging.properties
-    
     
 
     public static void main(String args[])
@@ -66,45 +66,55 @@ public class WWSocketServer
         {
         	log.info("wwss main: attempting to create a ServerSocket on port: " + Consts.PORT);
         	
-            //1. creating a server socket - 1st parameter is port number and 2nd is the backlog
+            // Create a server socket - 1st parameter is port number and 2nd is the backlog
             s = new ServerSocket(Consts.PORT, Consts.MAX_BACKLOG_CONNECTIONS);
              
-            //2. Wait for an incoming connection
+            // Wait for an incoming connection
             echo("main: Server socket created. Waiting for connection...");
              
-            while(true)
+            while(acceptConnections)
             {
-                //get the connection socket
+                // Get the connection socket
                 conn = s.accept();
                  
-                //print the hostname and port number of the connection
+                // Print the hostname and port number of the connection
                 echo("main: Connection received from " + conn.getInetAddress().getHostName() + " : " + conn.getPort());
                  
-                //create new thread to handle client
+                // Create new thread to handle client
                 new ClientHandler(conn).start();
             }
         }
-         
         catch(IOException e)
         {
-            System.err.println("wwss IOException");
+            System.err.println("wwss main: IOException");
         }
-         
-        //5. close the connections and stream
-        try
+        finally
         {
-            s.close();
-        }
-         
-        catch(IOException ioException)
-        {
-            System.err.println("wwss Unable to close. IOexception");
+            // Close the connections and stream
+            try
+            {
+            	System.out.println("wwss main: WARNING: closing ServerSocket.");
+                s.close();
+            }
+            
+            catch(IOException e)
+            {
+            	System.err.println("wwss main: Unable to close. IOexception");
+            }
+             
+            catch(NullPointerException e)
+            {
+                System.err.println("wwss main: Unable to close. NullPointerException. Is server already running on this IP?");
+            }
         }
     }
     
+    /**
+     * Reset the global dictionary and load a fresh copy from external file.
+     */
     private static void initDictionary()
     {
-		System.out.println("wwss main: loadDictionary");
+		System.out.println("wwss main: initDictionary");
     	if(Model.getGlobalDictionary() == null)
     	{
     		populateDictionary();

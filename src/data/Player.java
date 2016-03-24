@@ -72,84 +72,88 @@ public class Player
 	/////////////////////////
 	// GETTERS/SETTERS
 	
-	public String getState()
+	public synchronized String getState()
 	{
 		return state;
 	}
 	
-	public void setState(String state)
+	public synchronized void setState(String state)
 	{
 		this.state = state;
 		log.info( "Player state updated: " + this.port + ", " + this.username + ", " + this.state);
 	}
 	
-	public GameBoard getGameBoard()
+	public synchronized GameBoard getGameBoard()
 	{
 		return gameBoard;
 	}
 
-	public void setGameBoard(GameBoard gameBoard)
+	public synchronized void setGameBoard(GameBoard gameBoard)
 	{
+		if(this.gameBoard != null && gameBoard != null)
+		{
+			log.warning( "WARNING: Player already has a GameBoard set: " + this.username + ", " + this.state);
+		}
 		this.gameBoard = gameBoard;
 	}
 
-	public Socket getConn()
+	public synchronized Socket getConn()
 	{
 		return conn;
 	}
 
-	public void setConn(Socket conn)
+	public synchronized void setConn(Socket conn)
 	{
 		this.conn = conn;
 	}
 
-	public int getPort()
+	public synchronized int getPort()
 	{
 		return port;
 	}
 
-	public void setPort(int port)
+	public synchronized void setPort(int port)
 	{
 		this.port = port;
 	}
 
-	public Player getOpponent()
+	public synchronized Player getOpponent()
 	{
 		return opponent;
 	}
 
-	public void setOpponent(Player opponent)
+	public synchronized void setOpponent(Player opponent)
 	{
 		this.opponent = opponent;
 		//log.info( "setOpponent: opponent Player selected on port: " + this.opponent.getPort() );
 	 	log.info( "setOpponent: " + getUsername() + "'s opponent Player set to: " + getOpponentUsername() );
 	}
 
-	private String getOpponentUsername()
+	private synchronized String getOpponentUsername()
 	{
 		if(this.getOpponent() == null)
 		{
-			return "NONE";
+			return "null_opponent";
 		}
 		else return this.getOpponent().getUsername();
 	}
 	
-	public String getUsername()
+	public synchronized String getUsername()
 	{
 		return username;
 	}
 
-	public void setUsername(String username)
+	public synchronized void setUsername(String username)
 	{
 		this.username = username;
 	}
 	
-	public int getScore()
+	public synchronized int getScore()
 	{
 		return score;
 	}
 
-	public void setScore(int score)
+	public synchronized void setScore(int score)
 	{
 		this.score = score;
 	}
@@ -185,7 +189,7 @@ public class Player
 	
 	public void handleSelectOpponentRequest(SelectOpponentRequest request)
 	{
-		log.info("handleSelectOpponentRequest: current state, request: " + state + ", " + request);
+		log.warning(this.username + ": handleSelectOpponentRequest: current state, request: " + state + ", " + request);
 		try
 		{
 			out.writeObject(request);
@@ -198,7 +202,7 @@ public class Player
 	
 	public void handleSelectOpponentResponse(SelectOpponentResponse response)
 	{
-		log.info("handleSelectOpponentResponse: " + response);
+		log.warning(this.username + ": handleSelectOpponentResponse: " + response);
 		
 		if(response.getRequestAccepted() == true)
 		{

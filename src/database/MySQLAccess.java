@@ -19,6 +19,8 @@ import com.mysql.jdbc.SQLError;
 import com.mysql.jdbc.exceptions.jdbc4.CommunicationsException;
 import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
 
+import data.PublicPlayerData;
+
 
 public class MySQLAccess 
 {
@@ -318,65 +320,71 @@ public class MySQLAccess
 		
 		LoginResponse response = null;
 		String errMsg = null;
-		try
+		
+		resultSet = null;
+		
+		if(dbConnectionValid())
 		{
-			statement = sqlConnection.createStatement();
-
-			// resultSet gets the result of the SQL query
-			resultSet = statement.executeQuery( "SELECT * from users WHERE username='" + request.getUserName() + "' AND password='" + request.getPassword() + "'");
-
-			// TODO: there should only be one row. if there is more than one
-			// then multiple users have returned with the same username
-			boolean resultIsValid = resultSet.first();		// move the cursor to the first row; return true if that command is successful
-			if (resultIsValid)
+			try
 			{
-				
-				System.out.println("MySQLAccess: login: user record located: " + request.getUserName());
-				//TODO: this section may also reveal issues if the ResultSet has more than one row
-				String username 		= resultSet.getString("username");
-				String email 			= resultSet.getString("email");
-				int currentGameScore 	= resultSet.getInt("current_game_score");
-				int highScore 			= resultSet.getInt("high_score");
-				
-				System.out.println("MySQLAccess: login: username:" + username + ", email:" + email + ", current_game_score:" + currentGameScore + ", high_score:" + highScore);
-				response = new LoginResponse(true, 1, username, null, false, 0);
-			} 
-			// result set did not find at least one matching user? return response w/ error
-			else
-			{
-				response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EMPTY USER/PASSWORD QUERY RESULT", false, 0);
-				Exception e = new Exception( "MySQLAccess: login: FAILED. USERNAME NOT FOUND: " + request.getUserName());
-			}
-		} 
-		// attempt to create result set threw error? return response w/ error
-		catch (SQLException e)
-		{
-			if (sqlConnection == null)
-			{
-				response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD. SQLCONNECTION IS NULL.", false, 0);
-			}
-			else response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD. SQLCONNECTION EXISTS.", false, 0);
-			e.printStackTrace();
-		} 
-		catch(Exception e)
-		{
-			e.printStackTrace();
-		}
-		finally
-		{
-			if (null != resultSet && close)
-			{
-				try
+				statement = sqlConnection.createStatement();
+	
+				// resultSet gets the result of the SQL query
+				resultSet = statement.executeQuery( "SELECT * from users WHERE username='" + request.getUserName() + "' AND password='" + request.getPassword() + "'");
+	
+				// TODO: there should only be one row. if there is more than one
+				// then multiple users have returned with the same username
+				boolean resultIsValid = resultSet.first();		// move the cursor to the first row; return true if that command is successful
+				if (resultIsValid)
 				{
-					resultSet.close();
+					
+					System.out.println("MySQLAccess: login: user record located: " + request.getUserName());
+					//TODO: this section may also reveal issues if the ResultSet has more than one row
+					String username 		= resultSet.getString("username");
+					String email 			= resultSet.getString("email");
+					int currentGameScore 	= resultSet.getInt("current_game_score");
+					int highScore 			= resultSet.getInt("high_score");
+					
+					System.out.println("MySQLAccess: login: username:" + username + ", email:" + email + ", current_game_score:" + currentGameScore + ", high_score:" + highScore);
+					response = new LoginResponse(true, 1, username, null, false, 0);
 				} 
-				catch (SQLException e)
+				// result set did not find at least one matching user? return response w/ error
+				else
 				{
-					e.printStackTrace();
+					response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EMPTY USER/PASSWORD QUERY RESULT", false, 0);
+					Exception e = new Exception( "MySQLAccess: login: FAILED. USERNAME NOT FOUND: " + request.getUserName());
 				}
-				catch(Exception e)
+			} 
+			// attempt to create result set threw error? return response w/ error
+			catch (SQLException e)
+			{
+				if (sqlConnection == null)
 				{
-					e.printStackTrace();
+					response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD. SQLCONNECTION IS NULL.", false, 0);
+				}
+				else response = new LoginResponse(false, 1, request.getUserName(), "ERROR: EXCEPTION DURING ATTEMPT TO RETRIEVE USER/PASSWORD. SQLCONNECTION EXISTS.", false, 0);
+				e.printStackTrace();
+			} 
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+			finally
+			{
+				if (null != resultSet && close)
+				{
+					try
+					{
+						resultSet.close();
+					} 
+					catch (SQLException e)
+					{
+						e.printStackTrace();
+					}
+					catch(Exception e)
+					{
+						e.printStackTrace();
+					}
 				}
 			}
 		}
@@ -384,48 +392,113 @@ public class MySQLAccess
 		return response;
 	}
   
-  public ResultSet getUser(String user, Boolean close) throws SQLException
-  {
-	try
+	/**
+	 * Return a single PublicPlayerData object from the DB, given a username.
+	 * This data type is used to carry only public-facing user data such as high scores.
+	 * @param user
+	 * @param close
+	 * @return
+	 * @throws SQLException
+	 */
+	public PublicPlayerData getPublicUserData(String user, Boolean close) throws SQLException
 	{
-		statement = sqlConnection.createStatement();
-	      
-	      // resultSet gets the result of the SQL query
-	      resultSet = statement.executeQuery("SELECT * from users WHERE username='" + user + "'");
-	      
-	      //TODO: there should only be one row. if there is more than one then multiple users have returned with the same username
-	      boolean rowLocated = resultSet.first();
-	      if ( rowLocated )
-	      {
-			System.out.println("getUser: user record located: " + user);
-			String username 		= resultSet.getString("username");
-			String email 			= resultSet.getString("email");
-			int currentGameScore 	= resultSet.getInt("current_game_score");
-			int highScore 			= resultSet.getInt("high_score");
-			int totalScore 			= resultSet.getInt("total_score");
-			System.out.println("username:" + username + ", email:" + email + ", current_game_score:" + currentGameScore + ", high_score:" + highScore + ", total_score:" + totalScore);
-	      }
-	      else
-	      {
-	    	  Exception e = new Exception("getUser: FAILED. USERNAME NOT FOUND: " + user);
-	    	  throw e;
-	      }
-	} 
-	catch (Exception e)
-	{
-		System.out.println(e);
-	}
-	finally
-	{
-		if ( close )
+		System.out.println("getPublicUserData: user: " + user);
+
+		PublicPlayerData playerData = null;
+		
+		if(dbConnectionValid())
 		{
-			resultSet.close();
+			try
+			{
+				statement = sqlConnection.createStatement();
+				
+				// resultSet gets the result of the SQL query
+				resultSet = statement.executeQuery("SELECT * from users WHERE username='" + user + "'");
+				
+				//TODO: there should only be one row. if there is more than one then multiple users have returned with the same username
+				boolean rowLocated = resultSet.first();
+				if ( rowLocated )
+				{
+					System.out.println("getPublicUserData: user record located: " + user);
+					String username 		= resultSet.getString("username");
+					int highScore 			= resultSet.getInt("high_score");
+					int totalScore 			= resultSet.getInt("total_score");
+					System.out.println("username:" + username + ", high_score:" + highScore + ", total_score:" + totalScore);
+					
+					playerData = new PublicPlayerData(username,  highScore, totalScore);
+				}
+				else
+				{
+					Exception e = new Exception("getPublicUserData: FAILED. USERNAME NOT FOUND: " + user);
+					throw e;
+				}
+			} 
+			catch (Exception e)
+			{
+				System.out.println(e);
+			}
+			finally
+			{
+				if ( close )
+				{
+					resultSet.close();
+				}
+			}
 		}
+		
+		return playerData;
 	}
 	
+  public ResultSet getUser(String user, Boolean close) throws SQLException
+  {
+	System.out.println("getUser: " + user);
+	
+	resultSet = null;
+	
+	if(dbConnectionValid())
+	{
+		try
+		{
+			statement = sqlConnection.createStatement();
+		      
+		      // resultSet gets the result of the SQL query
+		      resultSet = statement.executeQuery("SELECT * from users WHERE username='" + user + "'");
+		      
+		      //TODO: there should only be one row. if there is more than one then multiple users have returned with the same username
+		      boolean rowLocated = resultSet.first();
+		      if ( rowLocated )
+		      {
+				System.out.println("getUser: user record located: " + user);
+				String username 		= resultSet.getString("username");
+				String email 			= resultSet.getString("email");
+				int currentGameScore 	= resultSet.getInt("current_game_score");
+				int highScore 			= resultSet.getInt("high_score");
+				int totalScore 			= resultSet.getInt("total_score");
+				System.out.println("username:" + username + ", email:" + email + ", current_game_score:" + currentGameScore + ", high_score:" + highScore + ", total_score:" + totalScore);
+		      }
+		      else
+		      {
+		    	  Exception e = new Exception("getUser: FAILED. USERNAME NOT FOUND: " + user);
+		    	  throw e;
+		      }
+		} 
+		catch (Exception e)
+		{
+			System.out.println(e);
+		}
+		finally
+		{
+			if ( close )
+			{
+				resultSet.close();
+			}
+		}
+  	}
+  
 	return resultSet;
   }
   
+  //TODO - unused
   private void writeMetaData(ResultSet resultSet) throws SQLException {
     // now get some metadata from the database
     System.out.println("The columns in the table are: ");
@@ -433,6 +506,36 @@ public class MySQLAccess
     for  (int i = 1; i<= resultSet.getMetaData().getColumnCount(); i++){
       System.out.println("Column " +i  + " "+ resultSet.getMetaData().getColumnName(i));
     }
+  }
+  
+  /**
+   * Return true if the database connection is valid. 
+   * Will return false if the connection has expired after no new recent connections, or timed out, for example.
+   * @return
+   */
+  private Boolean dbConnectionValid()
+  {
+	  final int TIMEOUT_SECONDS = 2;
+	  Boolean isValid = false;
+	  try 
+	  {
+		  if(sqlConnection.isValid(TIMEOUT_SECONDS))
+		  {
+			  isValid = true;
+		  }
+		  else
+		  {
+			  isValid = false;
+			  System.out.println("dbConnectionValid: WARNING: DB CONNECTION IS NO LONGER VALID.");
+		  }
+	  } 
+	  catch (SQLException e) 
+	  {
+		  isValid = false;
+		  System.out.println("dbConnectionValid: WARNING: SQLException: DB CONNECTION IS NO LONGER VALID.");
+		  e.printStackTrace();
+	  }
+	  return isValid;
   }
 
 

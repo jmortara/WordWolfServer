@@ -22,6 +22,7 @@ import constants.Consts;
 import constants.Errors;
 import data.Model;
 import data.Player;
+import data.PublicPlayerData;
 import database.*;
 import game.GameBoardBuilder;
 import test.TestMySQLAccess;
@@ -459,7 +460,12 @@ class ClientHandler extends Thread
 				if(existingPlayer.getUsername() == loginResponse.getUserName())
 				{
 					attachPlayer(existingPlayer);
+					break;
 				}
+			}
+			if(this.player == null)
+			{
+				log.warning("wwss handleLoginRequest: reattaching player FAILED. This thread's player is still null.");
 			}
 		}
 	}
@@ -477,7 +483,8 @@ class ClientHandler extends Thread
 
     	String requestType = request.getRequestType();
     	String requestedUsername = null;
-    	ArrayList<String> list = new ArrayList<String>();
+    	ArrayList<String> usernamesList = new ArrayList<String>();		// list of username Strings only
+    	ArrayList<PublicPlayerData> publicPlayerDataList = new ArrayList<PublicPlayerData>();		// subset of usernamesList, in formatted type
     	GetPlayerListResponse response = null;
     	
     	//TODO: create a robot player in case no human players are available - would require some AI for gamplay
@@ -490,7 +497,7 @@ class ClientHandler extends Thread
 					requestedUsername = this.player.getUsername();
 					if(requestedUsername != null)
 					{
-						list.add(requestedUsername);
+						usernamesList.add(requestedUsername);
 					}
 					break;
 				
@@ -498,7 +505,7 @@ class ClientHandler extends Thread
 					requestedUsername = this.player.getOpponent().getUsername();
 					if(requestedUsername != null)
 					{
-						list.add(requestedUsername);
+						usernamesList.add(requestedUsername);
 					}
 					break;
 					
@@ -509,7 +516,7 @@ class ClientHandler extends Thread
 						requestedUsername = requestedPlayer.getUsername();
 						if(requestedUsername != null)
 						{
-							list.add(requestedUsername);
+							usernamesList.add(requestedUsername);
 						}
 					}
 					break;
@@ -521,7 +528,7 @@ class ClientHandler extends Thread
 						{
 							if(playerInList != this.player)
 							{
-								list.add(playerInList.getUsername());
+								usernamesList.add(playerInList.getUsername());
 							}
 						}
 					}
@@ -532,13 +539,14 @@ class ClientHandler extends Thread
 					{
 						for(Player playerInList : Model.getPlayers())
 						{
-							list.add(playerInList.getUsername());
+							usernamesList.add(playerInList.getUsername());
 						}
 					}
 					break;
 					
 				
 				case PlayerListType.ALL_UNMATCHED_PLAYERS:			// THIS IS CURRENTLY THE TYPE REQUESTED BY THE CLIENT
+					log.info("wwss handleGetPlayerListRequest: getting list of all unmatched players from DB...");
 					if(Model.getPlayers() != null)
 					{
 						for(Player playerInList : Model.getPlayers())
@@ -549,7 +557,7 @@ class ClientHandler extends Thread
 							{
 								if(playerInList.getOpponent() == null)	//TODO - add a condition for PLAYER_STATE_IDLE etc
 								{
-									list.add(playerInList.getUsername());
+									usernamesList.add(playerInList.getUsername());
 								}
 							}
 						}
@@ -558,13 +566,31 @@ class ClientHandler extends Thread
 					
 				default:
 			    	log.warning("wwss handleGetPlayerListResponse: WARNING: UNHANDLED LIST TYPE REQUESTED: " + requestType);
-					// do nothing; empty list
+					// do nothing; empty list 
 					break;
 			}
 
-	    	log.info("wwss handleGetPlayerListResponse: got player list: " + list.toString());
+	    	log.info("wwss handleGetPlayerListResponse: got player usernames list: " + usernamesList.toString());
 	    	
-			response = new GetPlayerListResponse(requestType, list);
+	    	// convert the list of usernames to PublicPlayerDatas
+	    	PublicPlayerData playerData = null;		// a single player's data
+	    	for(String username : usernamesList)
+	    	{
+	    		try 
+	    		{
+					playerData = dataAccessObj.getPublicUserData(username, true);
+		    		if(playerData != null)
+		    		{
+		    			publicPlayerDataList.add(playerData);
+		    		}
+				} 
+	    		catch (SQLException e) 
+	    		{
+					e.printStackTrace();
+				}
+	    	}
+	    	
+			response = new GetPlayerListResponse(requestType, publicPlayerDataList);
 	    	log.info("wwss handleGetPlayerListResponse: post-serialized player list: " + response.getPlayersCopy());
 			sendObject(response);
 			player.setState(PlayerState.IDLE);
@@ -577,12 +603,43 @@ class ClientHandler extends Thread
 	
 	private void handleSelectOpponentRequest(SelectOpponentRequest request, ObjectOutputStream out)
 	{
-		log.info("wwss handleSelectOpponentRequest: " + request);
+		log.info("wwss ***handleSelectOpponentRequest*** : " + request);
 		
 		// source user initiates the request to the destination user
 		String sourceUsername = request.getSourceUsername();
 		Player sourcePlayer = getPlayerByUsername(sourceUsername);
-		sourcePlayer.setState(PlayerState.REQUESTED_OPPONENT);
+		
+		// ignore redundant requests
+		if( sourcePlayer.getState().equals(PlayerState.REQUESTED_OPPONENT) || sourcePlayer.getState().equals(PlayerState.REQUESTED_REMATCH) )
+		{
+			log.info("wwss handleSelectOpponentRequest: ignoring request, this player has already initiated own request: " + sourcePlayer.getUsername());
+			return;
+		}
+		else if(sourcePlayer.getState().equals(PlayerState.RECEIVED_OPPONENT_REQUEST))
+		{
+			log.info("wwss handleSelectOpponentRequest: ignoring request, this player has already received an opponent request: " + sourcePlayer.getUsername());
+			return;
+		}
+		else if(sourcePlayer.getState().equals(PlayerState.ACCEPTED_OPPONENT))
+		{
+			log.info("wwss handleSelectOpponentRequest: ignoring request, this player has already accepted an opponent request: " + sourcePlayer.getUsername());
+			return;
+		}
+		else if(sourcePlayer.getState().equals(PlayerState.READY_FOR_GAME_START))
+		{
+			log.info("wwss handleSelectOpponentRequest: ignoring request, this player is already ready to start an established game: " + sourcePlayer.getUsername());
+			return;
+		}
+		
+		// in the case of a rematch request, make sure both players don't request the same rematch at the same time
+		if(request.getIsRematch())
+		{
+			sourcePlayer.setState(PlayerState.REQUESTED_REMATCH);
+		}
+		else 
+		{
+			sourcePlayer.setState(PlayerState.REQUESTED_OPPONENT);
+		}
 		
 		try
 		{
@@ -591,13 +648,21 @@ class ClientHandler extends Thread
 			
 			if(destinationPlayer != null && Model.getPlayers().contains(destinationPlayer))
 			{
-				destinationPlayer.setState(PlayerState.RECEIVED_OPPONENT_REQUEST);
-				destinationPlayer.handleSelectOpponentRequest(request);
+				// if the destination player already sent out a request for a rematch, ignore the rematch request since the source player will respond to the one sent
+				if(!destinationPlayer.getState().equals(PlayerState.REQUESTED_REMATCH))
+				{
+					destinationPlayer.setState(PlayerState.RECEIVED_OPPONENT_REQUEST);
+					destinationPlayer.handleSelectOpponentRequest(request);
+				}
+				else
+				{
+					log.warning("wwss handleSelectOpponentRequest: ignoring rematch request since destination user already requested one: " + destinationUsername);
+				}
 			}
 			else 
 			{
 				log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
-				SelectOpponentResponse playerResponse   = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName());
+				SelectOpponentResponse playerResponse   = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName(), request.getIsRematch(), false);
 				sendObject(playerResponse);
 			}
 		}
@@ -606,7 +671,7 @@ class ClientHandler extends Thread
 			if(e instanceof SocketException)
 			{
 				log.warning("wwss handleSelectOpponentRequest: SocketException. Destination player for opponent request may have disconnected. " + request);
-				SelectOpponentResponse playerResponse   = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName());
+				SelectOpponentResponse playerResponse   = new SelectOpponentResponse(false, request.getSourceUsername(), request.getDestinationUserName(), request.getIsRematch(), false);
 				sendObject(playerResponse);
 
 //				SelectOpponentResponse opponentResponse = new SelectOpponentResponse(false, request.getDestinationUserName(), request.getSourceUsername());
@@ -624,21 +689,108 @@ class ClientHandler extends Thread
 	 */
 	private void handleSelectOpponentResponse(SelectOpponentResponse response, ObjectOutputStream out)
 	{
-		log.info("wwss handleSelectOpponentResponse: " + response);
+		log.warning("wwss handleSelectOpponentResponse: " + response);
 		
 		// source player is the player who accepts or rejects the request they received via this response
-		String sourceUsername = response.getSourceUserName();
-		Player sourcePlayer = getPlayerByUsername(sourceUsername);
+		//String sourceUsername = response.getSourceUserName();
+		//Player sourcePlayer = getPlayerByUsername(sourceUsername);
+
+		//String sourceUsername = null;
+		Player sourcePlayer = getPlayerByUsername(response.getSourceUsername());
+		//String destinationUsername = null;
+		Player destinationPlayer = getPlayerByUsername(response.getDestinationUsername());
+		
+		// if this thread's player is the player that sent the initial request, set this player's state.
+		if(this.player == sourcePlayer)
+		{
+			log.warning("wwss handleSelectOpponentResponse: sent by source player (this player): " + response.getSourceUsername());
+			if(response.getRequestAccepted())
+			{
+				this.player.setState(PlayerState.ACCEPTED_OPPONENT);
+				destinationPlayer.setState(PlayerState.ACCEPTED_OPPONENT);
+			}
+			else
+			{
+				this.player.setState(PlayerState.IDLE);
+				this.player.removeOpponent();
+				destinationPlayer.setState(PlayerState.IDLE);
+				destinationPlayer.removeOpponent();
+			}
+			
+			SelectOpponentResponse sourcePlayerResponse;
+			SelectOpponentResponse destinationPlayerResponse;
+			
+			//mark3
+			if(!response.getIsRematch())
+			{
+				// the source player is the one who received the original request and sent back the response passed to this method
+				sourcePlayerResponse = new SelectOpponentResponse(response.getRequestAccepted(), response.getDestinationUsername(), response.getSourceUsername(), response.getIsRematch(), false);
+				this.player.handleSelectOpponentResponse(sourcePlayerResponse);	// send out the response to this player's client
+
+				// the destination player is the player who initiated the original request. they should receive the unaltered response.
+				destinationPlayerResponse = response;//new SelectOpponentResponse(response.getRequestAccepted(), response.getSourceUsername(), response.getDestinationUsername(), response.getIsRematch());
+				destinationPlayer.handleSelectOpponentResponse(destinationPlayerResponse);	// send out the response to the destination player's client
+			}
+			else
+			{
+				// the source player is the one who received the original request and sent back the response passed to this method
+				sourcePlayerResponse = new SelectOpponentResponse(response.getRequestAccepted(), response.getDestinationUsername(), response.getSourceUsername(), response.getIsRematch(), false);
+				this.player.handleSelectOpponentResponse(sourcePlayerResponse);	// send out the response to this player's client
+
+				// the destination player is the player who initiated the original request. they should receive the unaltered response.
+				destinationPlayerResponse = new SelectOpponentResponse(response.getRequestAccepted(), response.getSourceUsername(), response.getDestinationUsername(), response.getIsRematch(), true);
+				destinationPlayer.handleSelectOpponentResponse(destinationPlayerResponse);	// send out the response to the destination player's client
+			}
+		}
+		else if(this.player == destinationPlayer)
+		{
+			log.warning("wwss handleSelectOpponentResponse: IGNORED by destination player (this player): " + response.getDestinationUsername());
+			if(response.getRequestAccepted())
+			{
+				//this.player.setState(PlayerState.ACCEPTED_OPPONENT);
+			}
+			else
+			{
+//				this.player.setState(PlayerState.IDLE);
+//				sourcePlayer.setState(PlayerState.IDLE);
+			}
+//			SelectOpponentResponse destinationPlayerResponse = new SelectOpponentResponse(response.getRequestAccepted(), response.getDestinationUsername(), response.getSourceUserName());;
+//			this.player.handleSelectOpponentResponse(destinationPlayerResponse);	// send out the response to the destination player's client
+		}
+		else
+		{
+			log.warning("wwss handleSelectOpponentResponse: UNHANDLED CASE, CAN'T LOCATE A PLAYER IN THE RESPONSE: " + response);
+		}
+		
+		// compare the two player states. if both are in accepted_opponent state, match them up
+		try
+		{
+			if(sourcePlayer.getState().equals(PlayerState.ACCEPTED_OPPONENT) && destinationPlayer.getState().equals(PlayerState.ACCEPTED_OPPONENT))
+			{
+				log.info("wwss handleSelectOpponentResponse: both players are ready to be matched: " + sourcePlayer.getUsername() + ", " + destinationPlayer.getUsername());
+				matchPlayers(sourcePlayer, destinationPlayer);
+			}
+		}
+		catch(NullPointerException e)
+		{
+			log.warning("wwss handleSelectOpponentResponse: WARNING: possible null player: " + response);
+			e.printStackTrace();
+		}
+		
+		/*
 		SelectOpponentResponse sourcePlayerResponse = response;
+		
 		
 		try
 		{
 			// destination player is the player who originally made the invitation to a potential opponent in the form of a SelectOpponentRequest
-			String destinationUsername = sourcePlayerResponse.getDestinationUsername();
-			Player destinationPlayer = getPlayerByUsername(destinationUsername);
+			destinationUsername = sourcePlayerResponse.getDestinationUsername();
+			destinationPlayer = getPlayerByUsername(destinationUsername);
+
+			
 			SelectOpponentResponse destinationPlayerResponse = new SelectOpponentResponse(response.getRequestAccepted(), response.getDestinationUsername(), response.getSourceUserName());;
 			if(destinationPlayer != null)
-			{
+			{	//mark1
 				destinationPlayer.handleSelectOpponentResponse(sourcePlayerResponse);
 				sourcePlayer.handleSelectOpponentResponse(destinationPlayerResponse);
 				if(response.getRequestAccepted())
@@ -649,16 +801,36 @@ class ClientHandler extends Thread
 				}
 				else
 				{
+					//TODO - send out a rejection response in order to reset the client state
 					sourcePlayer.setState(PlayerState.IDLE);
 					destinationPlayer.setState(PlayerState.IDLE);
 				}
 			}
 			else log.info("wwss handleSelectOpponentRequest: could not locate destination user: " + destinationUsername);
+			
+		}
+		catch(NullPointerException e)
+		{
+			if(sourcePlayer == null)
+			{
+				log.warning("wwss handleSelectOpponentRequest: WARNING: NULL SOURCE PLAYER: " + sourceUsername);
+			}
+			else if(destinationPlayer == null)
+			{
+				log.warning("wwss handleSelectOpponentRequest: WARNING: NULL DESTINATION PLAYER: " + destinationUsername);
+			}
+			else
+			{
+				//mark2
+				log.warning("wwss handleSelectOpponentRequest: WARNING: UNKNOWN CAUSE OF NULL POINTER EXCEPTION: sourcePlyaer: " + sourcePlayer);
+				log.warning("wwss handleSelectOpponentRequest: WARNING: UNKNOWN CAUSE OF NULL POINTER EXCEPTION: destinationPlayer: " + destinationPlayer);
+				e.printStackTrace();
+			}
 		}
 		catch(Exception e)
 		{
 			e.printStackTrace();
-		}
+		}*/
 	}
 	
 	private void handleOpponentBoundMessage(OpponentBoundMessage request, ObjectOutputStream out)
@@ -736,6 +908,36 @@ class ClientHandler extends Thread
 	private void handleCreateGameRequest(CreateGameRequest request, ObjectOutputStream out)
 	{
 		log.info("wwss handleCreateGameRequest: " + request);
+		
+		// ignore redundant requests
+		if(player.getState().equals(PlayerState.PLAYING_GAME))
+		{
+			log.info("wwss handleCreateGameRequest: ignoring request, this player is already playing a game: " + player.getUsername());
+			return;
+		}
+		/*else if(sourcePlayer.getState().equals(PlayerState.RECEIVED_OPPONENT_REQUEST))
+		{
+			log.info("wwss handleSelectOpponentRequest: ignoring request, this player has already received an opponent request: " + sourcePlayer.getUsername());
+			return;
+		}
+		else if(sourcePlayer.getState().equals(PlayerState.ACCEPTED_OPPONENT))
+		{
+			log.info("wwss handleSelectOpponentRequest: ignoring request, this player has already accepted an opponent request: " + sourcePlayer.getUsername());
+			return;
+		}*/
+		else if(player.getGameBoard() != null)
+		{
+			log.info("wwss handleCreateGameRequest: ignoring request, this player has already has a GameBoard: " + player.getUsername());
+			player.getOpponent().setGameBoard(player.getGameBoard());	// make sure both GameBoards are the same
+			return;
+		}
+		else if(player.getOpponent() != null && player.getOpponent().getGameBoard() != null)
+		{
+			log.info("wwss handleCreateGameRequest: ignoring request, this player's opponent has already has a GameBoard: " + player.getUsername());
+			player.getOpponent().setGameBoard(player.getGameBoard());	// make sure both GameBoards are the same
+			return;
+		}
+		
 		setupGame(request.getBoardRows(), request.getBoardCols());
 	}
 	
@@ -778,25 +980,56 @@ class ClientHandler extends Thread
     	
     	//TODO: wrap up on the server side before sending the confirmation response. make sure both requests have come in before sending a unified response.
     	
+    	Player opponent = player.getOpponent();
+    	
     	log.info("wwss handleEndGameRequest: sending EndGameResponse to player: " + player.getUsername());
-    	player.setState(PlayerState.GAME_ENDED);
-    	EndGameResponse playerResponse = new EndGameResponse(player.getUsername(), -1, true, player.getScore(), player.getOpponent().getScore(), null);
-		player.handleEndGameResponse(playerResponse);
-		try 
+    	if(!player.getState().equals(PlayerState.GAME_ENDED))
+    	{
+	    	player.setState(PlayerState.GAME_ENDED);
+	    	player.setGameBoard(null);
+	    	
+	    	// get the opponent's score... if they are still a valid player/connection
+	    	int opponentScore = 0;
+	    	if(opponent != null)
+	    	{
+	    		opponentScore = opponent.getScore();
+	    	}
+	    	else
+	    	{
+	        	log.warning("wwss handleEndGameRequest: could not get score from opponent, possible opponent disconnected: " + opponent);
+	    	}
+	    	
+	    	// send the EndGameResponse to this thread's client
+	    	EndGameResponse playerResponse = new EndGameResponse(player.getUsername(), -1, true, player.getScore(), opponentScore, null);
+			player.handleEndGameResponse(playerResponse);
+			
+			// update the scores in the db
+			try 
+			{
+				dataAccessObj.updateHighScore( player.getUsername(), player.getScore());
+				dataAccessObj.updateTotalScore(player.getUsername(), player.getScore());
+			} 
+			catch (SQLException e) 
+			{
+	        	log.warning("wwss handleEndGameRequest: SQL EXCEPTION: could not get score from opponent, possible opponent disconnected: " + opponent);
+				e.printStackTrace();
+			}
+    	}
+    	else
 		{
-			dataAccessObj.updateHighScore( player.getUsername(), player.getScore());
-			dataAccessObj.updateTotalScore(player.getUsername(), player.getScore());
-		} 
-		catch (SQLException e) 
-		{
-			e.printStackTrace();
+    		log.warning("wwss handleEndGameRequest: player is already in game ended state, ignoring: " + player.getUsername());
 		}
+
     	
     	//TODO: note that the opponent response here is not generated from a request from that opponent
     	//log.info("wwss handleEndGameRequest: sending EndGameResponse to opponent: " + player.getOpponent().getUsername());
-    	player.getOpponent().setState(PlayerState.GAME_ENDED);
-    	//EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), player.getScore(), null);
-    	//player.getOpponent().handleEndGameResponse(opponentResponse);
+    	/*if(opponent!= null)
+    	{
+    		opponent.setState(PlayerState.GAME_ENDED);
+    		opponent.setGameBoard(null);
+        	EndGameResponse opponentResponse = new EndGameResponse(player.getOpponent().getUsername(), -1, true, player.getOpponent().getScore(), player.getScore(), null);
+        	player.getOpponent().handleEndGameResponse(opponentResponse);
+    	}*/
 	}
 	
 	private void handlePostEndGameActionRequest(PostEndGameActionRequest request, ObjectOutputStream out)
@@ -814,7 +1047,7 @@ class ClientHandler extends Thread
     	// if this thread's player requested a rematch, reformat the request into a Select Opponent Request and send it to their opponent as usual
 	    if(request.getRematch())
 	    {
-	    	SelectOpponentRequest selectOpponentRequest = new SelectOpponentRequest(request.getUserName(), request.getOpponentUserName());
+	    	SelectOpponentRequest selectOpponentRequest = new SelectOpponentRequest(request.getUserName(), request.getOpponentUserName(), true);
 	    	handleSelectOpponentRequest(selectOpponentRequest, out);
 			//setupGame(request.getBoardRows(), request.getBoardCols());
 	    	//CreateGameResponse createGameResponse = new CreateGameResponse(request.getUserID(),  request.getUserName(),  "game_type_rematch",  request.getBoardRows(),  request.getBoardCols(),  -1,  request.getOpponentUserID(),  request.getOpponentUserName(),  0,  0,  null,  null,  gameBoard,  Consts.DEFAULT_GAME_DURATION_MS,  null);
@@ -882,17 +1115,28 @@ class ClientHandler extends Thread
 	{
 		try
 		{
-			if(null == player)
+			if(null == this.player)
 			{
-				player = p;
+				setPlayer(p);
 				player.setState(PlayerState.CONNECTED_1);
-				logMsg("wwss attachPlayer: attached Player to this thread: " + player.getUsername());
+				logMsg("wwss attachPlayer: attached Player to this thread (existing player was null): " + player.getUsername());
+			}
+			else
+			{
+				logMsg("wwss attachPlayer: attached Player to this thread (existing player was "+this.player.getUsername()+"): " + player.getUsername());
+				setPlayer(p);
+				player.setState(PlayerState.CONNECTED_1);
 			}
 		}
 		catch (Error e)
 		{
 			logMsg("wwss attachPlayer: ERROR: ignoring an attempt to attach more than one player on this thread.");
 		}
+	}
+	
+	private synchronized void setPlayer(Player p)
+	{
+		this.player = p;
 	}
 	
 	private Boolean playerExists( String username ) 
@@ -951,6 +1195,16 @@ class ClientHandler extends Thread
 
 	private Boolean matchPlayers(Player player1, Player player2)
 	{
+		log.info("wwss ***matchPlayers*** : " + player1.getUsername() + ", " + player2.getUsername());
+		
+		// ignore redundant requests
+		if(player1.getOpponent() == player2 && player2.getOpponent() == player1 && player1.getState().equals(PlayerState.READY_FOR_GAME_START) && player2.getState().equals(PlayerState.READY_FOR_GAME_START))
+		{
+			log.warning("wwss matchPlayers: ignoring, these players have already been matched: " + player1.getUsername() + ", " + player2.getUsername());
+			return true;
+		}
+		
+		// make the players opponents of each other and update their states (THIS IS THE ONLY PLACE WHERE setOpponent() IS CALLED)
 		try
 		{
 			log.info("wwss matchPlayers: matching these two players as opponents: " + player1.getUsername() + ", " + player2.getUsername());
@@ -980,6 +1234,7 @@ class ClientHandler extends Thread
 	private void setupGame(int requestedRows, int requestedCols)
 	{
 		log.info("wwss ClientHandler: setupGame");
+		
 		if(player == null || player.getOpponent() == null)
 		{
 			log.warning("wwss ClientHandler: setupGame: player or opponent is null... aborting setupGame");
