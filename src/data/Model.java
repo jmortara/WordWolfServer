@@ -18,7 +18,7 @@ public class Model
 		}
 	}
 
-	public static void addPlayerToList(Player player)
+	public static synchronized void addPlayerToList(Player player)
 	{
 		if(player != null)
 		{
@@ -27,7 +27,7 @@ public class Model
 		}
 	}
 	
-	public static void removePlayerFromList(Player player)
+	public static synchronized void removePlayerFromList(Player player)
 	{
 		if(player != null)
 		{
@@ -43,7 +43,7 @@ public class Model
 	//////////////////////
 	// GETTERS / SETTERS
 
-	public static ArrayList<Player> getPlayers() 
+	public static synchronized ArrayList<Player> getPlayers() 
 	{
 		return players;
 	}

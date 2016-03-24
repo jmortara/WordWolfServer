@@ -2,6 +2,7 @@ package core;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.*;
 
@@ -18,6 +19,7 @@ public class WWSocketServer
     private static ServerSocket s;
     private static Socket conn;
     private static Boolean acceptConnections = true;
+    private static ArrayList<ClientHandler> clientList;
     
     private static FileHandler logFileHandler;
     public static Logger log;
@@ -56,11 +58,14 @@ public class WWSocketServer
 
         Model.init();
         
-        initDictionary();
+        initDictionary();	//TODO - refactor - delegate Dictionary methods to a separate class
         
         // socket setup
         s = null;
         conn = null;
+        
+        clientList = new ArrayList<ClientHandler>();
+        ClientHandler newClientHandler = null;
         
         try
         {
@@ -78,10 +83,14 @@ public class WWSocketServer
                 conn = s.accept();
                  
                 // Print the hostname and port number of the connection
-                echo("main: Connection received from " + conn.getInetAddress().getHostName() + " : " + conn.getPort());
+                echo("main: Connection received from " + conn.getInetAddress().getHostName() + " on port: " + conn.getPort());
                  
                 // Create new thread to handle client
-                new ClientHandler(conn).start();
+                newClientHandler = new ClientHandler(conn);
+                clientList.add(newClientHandler);
+                newClientHandler.start();
+
+                echo("main: client list size is now: " + clientList.size());
             }
         }
         catch(IOException e)
