@@ -58,16 +58,19 @@ public class MySQLAccess
     } 
     catch (CommunicationsException e) 
     {
-    	System.out.println("connectToDataBase: CONNECTION FAILED. COMMUNICATIONS LINK FAILURE. POSSIBLE CONNECTION TIMEOUT OR WRONG PORT.");
+    	System.out.println("connectToDataBase: CommunicationsException. CONNECTION FAILED. COMMUNICATIONS LINK FAILURE. POSSIBLE CONNECTION TIMEOUT OR WRONG PORT.");
+    	e.printStackTrace();
     	return false;
     } 
     catch (SQLException e) 
     {
-    	 System.out.println("connectToDataBase: CONNECTION FAILED. ACCESS DENIED.");
-    		return false;
+    	 System.out.println("connectToDataBase: SQLException. CONNECTION FAILED. ACCESS DENIED.");
+     	e.printStackTrace();
+    	return false;
     } 
     catch (Exception e) 
     {
+    	e.printStackTrace();
     	return false;
     } 
   }

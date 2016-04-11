@@ -11,6 +11,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.logging.Logger;
 import com.mortaramultimedia.wordwolf.shared.constants.*;
@@ -55,6 +56,15 @@ class ClientHandler extends Thread
     	log.info( "wwss ClientHandler constructor." );
         this.connection = connection;
         
+        try
+        {
+        	this.connection.setTcpNoDelay(true);
+        }
+        catch(SocketException e)
+        {
+        	log.warning( "wwss ClientHandler constructor ERROR: SocketException while setting TcpNoDelay()" );
+        }
+        
         initObjectStreams();
         initDatabaseAccess();
     }
@@ -79,10 +89,16 @@ class ClientHandler extends Thread
         		log.info( "wwss initObjectStreams: Created ObjectOutputStream." );
         	}
 		}
-        catch (IOException e)
+        catch (EOFException e)
 		{
+    		log.warning( "wwss initObjectStreams: EOFException" );
 			e.printStackTrace();
 		}
+        catch (IOException e)
+        {
+    		log.warning( "wwss initObjectStreams: IOException" );
+        	e.printStackTrace();
+        }
     }
     
     /**
@@ -130,8 +146,13 @@ class ClientHandler extends Thread
     {
         try
         {
+        	if(in == null)
+        	{
+        		log.warning("WARNING: ObjectInputStream in is null. Cannot read incoming objects.");
+        	}
+        	
             // start reading input from client
-            while( this.threadActive )
+            while( this.threadActive && in != null)
             {
                 Object obj = in.readObject();
             	logMsg( "RECEIVED: " + obj );
@@ -1119,10 +1140,14 @@ class ClientHandler extends Thread
     	log.info("wwss createPlayer w/login response fields");
 		try
 		{
+			String username = login.getUserName();
 			Player player = new Player(this.connection, this.in, this.out);
-			player.setUsername(login.getUserName());
+			player.setUsername(username);
 			
-			if(playerExists(login.getUserName()))
+			// Set the name of this thread for debugging / profiling purposes
+			this.setName("ClientHandler_" + username + "_" + new Date().getTime());
+			
+			if(playerExists(username))
 			{
 				// note - this results in handleLoginRequest reattaching the existing player
 				logMsg(" WARNING: Duplicate Player - ignoring request to add player with same username.");

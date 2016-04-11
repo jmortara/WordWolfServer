@@ -87,6 +87,7 @@ public class WWSocketServer
                  
                 // Create new thread to handle client
                 newClientHandler = new ClientHandler(conn);
+                newClientHandler.setName("ClientHandler_" + conn.getPort());
                 clientList.add(newClientHandler);
                 newClientHandler.start();
 
